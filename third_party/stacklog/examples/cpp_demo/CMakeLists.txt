@@ -1,0 +1,5 @@
+add_executable(stacklog_cpp_demo main.cpp)
+target_link_libraries(stacklog_cpp_demo PRIVATE stacklog::stacklog)
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(stacklog_cpp_demo PRIVATE -Wall -Wextra -Wpedantic)
+endif()

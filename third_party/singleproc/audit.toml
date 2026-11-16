@@ -1,0 +1,67 @@
+# cxx_audit 配置 —— singleproc
+#
+# 在仓库根目录运行：
+#     PYTHONPATH=../cxx_audit/src python3 -m cpp_audit -c audit.toml all
+#
+# 单项：
+#     ... cpp_audit -c audit.toml tidy
+#     ... cpp_audit -c audit.toml cpd
+#     ... cpp_audit -c audit.toml valgrind
+#     ... cpp_audit -c audit.toml build --kind asan
+[project]
+name = "singleproc"
+root = "."
+sources = ["src", "include", "tests", "examples"]
+excludes = ["build", ".git", "docs", "reports", "ci-logs"]
+build_system = "cmake"
+project_file = "CMakeLists.txt"
+build_dir = "build/audit"
+target = "singleproc_tests"
+
+[compat]
+# 本项目明确要求 C++11；compat 规则面向 C++98，启用只会产生系统性误报。
+enabled = false
+rules = []
+
+[tidy]
+enabled = true
+# clang-tidy 检查集由项目根目录 .clang-tidy 提供。
+fail_on_warnings = true
+
+[cpd]
+enabled = true
+dirs = ["src", "include"]
+min_tokens = 50
+
+[asan]
+# ASan 在本机可正常构建并运行三组测试；若在受限容器中出现
+# AddressSanitizer 运行时初始化失败，再按环境关闭。
+enabled = true
+build_dir = "build/asan"
+targets = ["singleproc_tests", "singleproc_doorbell_tests", "singleproc_process_tests"]
+target_args = { singleproc_process_tests = ["build/asan/tests/singleproc_probe"] }
+compiler = "clang++"
+cxxflags = ["-std=c++11", "-fsanitize=address",
+            "-fsanitize-address-use-after-return=always",
+            "-fno-omit-frame-pointer", "-g", "-O0"]
+ldflags = ["-fsanitize=address"]
+checks = ["detect_leaks", "detect_stack_use_after_return"]
+options = { halt_on_error = "0", symbolize = "1" }
+timeout_sec = 120
+
+[valgrind]
+# 覆盖锁、门铃和进程三组测试。
+enabled = true
+build_dir = "build/debug"
+targets = ["singleproc_tests", "singleproc_doorbell_tests", "singleproc_process_tests"]
+target_args = { singleproc_process_tests = ["build/debug/tests/singleproc_probe"] }
+compiler = "clang++"
+cxxflags = ["-std=c++11", "-g", "-O0"]
+tool = "memcheck"
+checks = ["leaks"]
+extra_args = ["--undef-value-errors=no",
+              "--errors-for-leak-kinds=definite,indirect"]
+timeout_sec = 180
+
+[reports]
+dir = "reports"

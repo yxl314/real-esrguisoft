@@ -1,0 +1,128 @@
+/* ==========================================================================
+ * panels.qss.in —— 面板私有样式（src/view/panels 专属）
+ *
+ * 加载机制：ThemeManager 在替换 app.qss.in 之后，会继续加载本模板并做同一套
+ * 双花括号占位符替换，最后一起 qApp->setStyleSheet()。本文件在 app.qss.in
+ * 之后追加，因此同等优先级的选择器以本文件为准。
+ *
+ * 约定：
+ *   - 颜色/圆角/字号一律用双花括号占位符，禁止硬编码色值；
+ *   - 选择器只加对象名前缀（#card[...] / #mediaPreview...），避免污染全局；
+ *   - 通用控件外观（按钮 / 下拉框 / 滑块 / 进度条）在 app.qss.in 里，
+ *     这里只补面板特有的组合与状态。
+ * ========================================================================== */
+
+/* --------------------------------------------------------------------------
+ * 1. 预览卡：图片 / 视频画面底、空态、拖放高亮
+ * -------------------------------------------------------------------------- */
+
+/* 拖入文件时整卡高亮：主操作橙浅底 + 主操作色描边 */
+QFrame#card[dropActive="true"] {
+	background-color: {{action.soft}};
+	border: 1px solid {{action.bg}};
+}
+
+/* 预览画面：浅底 + 1px 描边 + 6px 圆角（图片等比居中，视频控件铺满） */
+QLabel#mediaPreviewSurface {
+	background-color: {{bg.subtle}};
+	border: 1px solid {{border.default}};
+	border-radius: {{radius.control}}px;
+	color: {{text.3}};
+	font-size: {{fs.caption}}px;
+	padding: {{sp.1}}px;
+}
+
+/* 文件夹（批量）预览：二级文字 + 同一浅底，不用红绿底色 */
+QLabel#mediaPreviewSurface[state="folder"] {
+	color: {{text.2}};
+	border-color: {{border.default}};
+	background-color: {{bg.subtle}};
+}
+
+/* 预览失败 / 输出文件缺失 */
+QLabel#mediaPreviewSurface[state="error"] {
+	background-color: {{danger.soft}};
+	border: 1px solid {{danger}};
+	color: {{danger.text}};
+}
+
+QStackedWidget#mediaPreviewStack {
+	background: transparent;
+}
+
+/* 空态图标块：56×56（尺寸在 C++ 里固定），圆角取对话框档 */
+QLabel#emptyStateIconTile {
+	background-color: {{bg.subtle}};
+	border: 1px solid {{border.default}};
+	border-radius: {{radius.dialog}}px;
+}
+
+QLabel#emptyStateTitle {
+	color: {{text.1}};
+	font-size: {{fs.section}}px;
+	font-weight: 600;
+	background: transparent;
+}
+
+/* 预览卡下方的文件信息（文件名 + 格式 / 大小 / 分辨率） */
+QLabel#mediaInfoLabel {
+	color: {{text.2}};
+	font-size: {{fs.caption}}px;
+	background: transparent;
+}
+
+/* --------------------------------------------------------------------------
+ * 2. 播放器控制条：28 图标按钮 + 4px 细滑块 + 时间码
+ * -------------------------------------------------------------------------- */
+QWidget#mediaPlayerControls {
+	background: transparent;
+	border-top: 1px solid {{border.default}};
+}
+
+QLabel#mediaPlayerTime {
+	color: {{text.3}};
+	font-size: {{fs.caption}}px;
+	background: transparent;
+}
+
+/* --------------------------------------------------------------------------
+ * 3. 进度卡：8px 细进度条（轨道用 border.default，暗色主题也可见）
+ * -------------------------------------------------------------------------- */
+QProgressBar#processProgress {
+	background-color: {{border.default}};
+	border: none;
+	border-radius: 4px;
+}
+
+/* 进度卡头部右侧百分比 */
+QLabel#progressPercent {
+	color: {{text.1}};
+	font-size: 15px;
+	font-weight: 600;
+}
+
+/* 进度卡状态补充行（取消/停止收尾/失败原因） */
+QLabel#progressStateMessage {
+	color: {{text.2}};
+	font-size: 12px;
+}
+
+/* --------------------------------------------------------------------------
+ * 4. 主次按钮禁用态（app.qss.in 的 primary 禁用时仍为实心橙，容易误判为可点）
+ * -------------------------------------------------------------------------- */
+QPushButton#actionButton[variant="primary"]:disabled {
+	background-color: {{action.soft}};
+	border: 1px solid {{border.default}};
+	color: {{text.3}};
+}
+
+QPushButton#actionButton[variant="secondary"]:disabled {
+	background-color: transparent;
+	border: 1px solid {{border.default}};
+	color: {{text.3}};
+}
+
+QPushButton#actionButton[variant="danger"]:disabled {
+	background-color: {{bg.subtle}};
+	color: {{text.3}};
+}

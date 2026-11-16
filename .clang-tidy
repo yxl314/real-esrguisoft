@@ -1,0 +1,15 @@
+---
+# clang-tidy 配置：由 cxx_audit 的 tidy 检查（Linux/WSL 显式补跑）读取。
+#
+# Windows/MSYS2 UCRT64 默认不跑 tidy（audit.toml 里 tidy.enabled = false，
+# 原因见该文件注释与 docs/ci.md）；Linux 上可用
+#   PYTHONPATH=../cxx_audit/src python3 -m cpp_audit -c audit.toml tidy
+# 临时补跑。检查集刻意保守，避免把大量风格偏好变成阻断项。
+Checks: '-*,bugprone-*,performance-*'
+WarningsAsErrors: ''
+# 只诊断本仓库 src/ 下的代码：允许编译数据库产生的 src/...、./src/...、
+# ../../src/... 形式；结尾正则阻止 src/../third_party/... 借前缀混入。
+HeaderFilterRegex: '^(\./|\.\./)*src/([^.]|\.[^./])'
+SystemHeaders: false
+# 修复后的排版交给仓库根的 .clang-format（cxx_ci/standardize 用同一份）。
+FormatStyle: file

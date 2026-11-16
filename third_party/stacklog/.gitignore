@@ -1,0 +1,16 @@
+build/
+build-*/
+*.o
+*.a
+*.so
+*.gcda
+*.gcno
+*.gcov
+ci-logs/
+reports/
+standardize.diff
+.standardize/
+logs/
+bench-logs/
+*.log
+*.log.*

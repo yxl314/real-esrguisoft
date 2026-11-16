@@ -1,0 +1,53 @@
+<!DOCTYPE RCC>
+<RCC version="1.0">
+    <qresource prefix="/">
+        <!-- 主题：QSS 模板由 ThemeManager 运行时做 {{token}} 替换 -->
+        <file>theme/app.qss.in</file>
+        <file>theme/panels.qss.in</file>
+
+        <!-- 应用图标（窗口图标 / 侧栏 Logo / 关于页） -->
+        <file>app.png</file>
+
+        <!-- UI 图标：白色描边 PNG，运行时由 IconProvider 按主题染色 -->
+        <file>icons/activity.png</file>
+        <file>icons/alert-triangle.png</file>
+        <file>icons/book-open.png</file>
+        <file>icons/check-qss.png</file>
+        <file>icons/check.png</file>
+        <file>icons/chevron-down-dark.png</file>
+        <file>icons/chevron-down-light.png</file>
+        <file>icons/chevron-down.png</file>
+        <file>icons/chevron-right.png</file>
+        <file>icons/cpu.png</file>
+        <file>icons/external-link.png</file>
+        <file>icons/film.png</file>
+        <file>icons/folder-open.png</file>
+        <file>icons/github.png</file>
+        <file>icons/image.png</file>
+        <file>icons/images.png</file>
+        <file>icons/info.png</file>
+        <file>icons/keyboard.png</file>
+        <file>icons/maximize.png</file>
+        <file>icons/minimize.png</file>
+        <file>icons/minus.png</file>
+        <file>icons/monitor.png</file>
+        <file>icons/moon.png</file>
+        <file>icons/panel-left-close.png</file>
+        <file>icons/panel-left-open.png</file>
+        <file>icons/pause.png</file>
+        <file>icons/play.png</file>
+        <file>icons/plus.png</file>
+        <file>icons/refresh-cw.png</file>
+        <file>icons/rotate-ccw.png</file>
+        <file>icons/settings.png</file>
+        <file>icons/sparkles.png</file>
+        <file>icons/square.png</file>
+        <file>icons/sun.png</file>
+        <file>icons/trash-2.png</file>
+        <file>icons/video.png</file>
+        <file>icons/x.png</file>
+        <file>icons/zap.png</file>
+        <!-- i18n：英文翻译（由 tools/update-translations.ps1 生成；.ts 为源，.qm 由 lrelease 产出） -->
+        <file>i18n/app_en.qm</file>
+    </qresource>
+</RCC>

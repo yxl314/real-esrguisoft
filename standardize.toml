@@ -1,0 +1,42 @@
+# standardize 配置：real-esrguisoft 的排版门禁（cxx_ci/standardize）
+#
+# 用法（在本仓库根目录执行）：
+#   python3 ../cxx_ci/standardize/standardize.py --check     # 只检查，有 diff 退出 1
+#   python3 ../cxx_ci/standardize/standardize.py             # 生成 build/standardize/standardize.diff
+#   python3 ../cxx_ci/standardize/standardize.py --apply     # 复核 diff 后应用
+#
+# 约定：
+#   - 排版规则全部来自仓库根的 .clang-format（由现有源码反推）。
+#   - 只做 clang-format 排版，不跑 clang-tidy：tidy 由 cxx_audit 管（见 audit.toml），
+#     这里保持单一职责，也避免在没装 tidy/编译数据库的 Windows 机器上误报。
+#   - 第三方库、构建产物、资源与素材不参与扫描（禁止顺手格式化 vendored 代码）。
+
+[standardize]
+paths = ["main.cpp", "src", "tests"]
+exclude = [
+    "third_party",
+    "bin",
+    "resources",
+    "input",
+    "dist",
+    "build",
+    "build-*",
+    ".qtcreator",
+]
+
+jobs = 4
+
+# 中间产物统一放 build/standardize（.gitignore 已忽略 build/ 与 build-*/），
+# 不往仓库根目录写 standardize.diff / .standardize。
+build_dir = "build/standardize"
+diff = "build/standardize/standardize.diff"
+stage_dir = "build/standardize/stage"
+
+# 工具：Windows/MSYS2 与 Linux 上都用 PATH 中的 clang-format；
+# 若装了版本化命令（如 clang-format-18），改这里即可。
+clang_format = "clang-format"
+clang_tidy = "clang-tidy"
+
+tidy = false
+format = true
+auto_compile_commands = false

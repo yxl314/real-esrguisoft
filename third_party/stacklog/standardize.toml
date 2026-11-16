@@ -1,0 +1,16 @@
+# cxx_ci/standardize 配置 —— stacklog
+#
+# 在仓库根目录运行：
+#     python3 ../cxx_ci/standardize/standardize.py --check
+#     python3 ../cxx_ci/standardize/standardize.py
+#     python3 ../cxx_ci/standardize/standardize.py --apply
+[standardize]
+paths = ["src", "include", "tests", "examples/cpp_demo"]
+exclude = ["build", "third_party"]
+# 复用 cxx_ci 生成的 compile_commands.json，避免旧 build/ 下的 DB 混入。
+build_dir = "build/ci"
+diff = "standardize.diff"
+stage_dir = ".standardize"
+auto_compile_commands = true
+tidy = true
+format = true

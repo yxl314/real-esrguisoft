@@ -1,0 +1,67 @@
+# 排除Python缓存文件夹
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 排除其他常见的临时文件和缓存
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# 排除IDE和编辑器文件
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 排除操作系统生成的文件
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+# 本机验证构建专用的临时依赖（勿提交）
+.verify-deps/
+
+# qmake 构建产物
+Makefile
+*.o
+moc_*.cpp
+qrc_*.cpp
+resr-tests
+
+moc_predefs.h
+.qmake.stash
+tests/*.o
+
+# 运行期日志（stacklog 写入 <程序目录>/logs）
+logs/
+
+# 本机独立构建目录（CMake / Ninja 生成物，勿提交）
+build-*/
+# 单实例锁在程序目录下的回退目录（仅本机运行时产物）
+/singleproc/
+
+# Qt Creator / IDE 本地产物（工程已迁移到 CMake，不再提交 .pro.user）
+.qtcreator/
+
+# 历史遗留的调试残留文件（曾在 HEAD 中被误提交，防复发）
+hook_ctor.txt

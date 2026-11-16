@@ -1,0 +1,19 @@
+# cxx_ci 配置 —— singleproc
+#
+# 在仓库根目录运行：
+#     python3 ../cxx_ci/ci/ci.py ci.toml
+#     python3 ../cxx_ci/ci/ci.py ci.toml --steps clean,configure,build
+name = "singleproc"
+build_system = "cmake"
+source_dir = "."
+project_file = "CMakeLists.txt"
+build_dir = "build/ci"
+configure_args = ["-DCMAKE_BUILD_TYPE=Debug", "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"]
+
+[output]
+build = "warnings"
+test = "failures"
+dir = "ci-logs"
+
+[test]
+framework = "ctest"

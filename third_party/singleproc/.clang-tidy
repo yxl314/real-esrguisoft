@@ -1,0 +1,111 @@
+---
+# 只保留对小型 C++11 库有实际价值的检查。
+# 禁用项及原因：
+# - easily-swappable-parameters：Guard(key, runtime_dir) 两个字符串是刻意 API
+# - narrowing-conversions：fd/长度转换告警噪音高
+# - performance-enum-size：State 保持默认底层类型，不引入 cstdint
+# - magic-numbers：0600、4096、100 等是 POSIX/协议常量
+# - identifier-length：fd 等短名是本地实现细节
+# - function-cognitive-complexity/size：小库不按行数/复杂度拆分
+# - suspicious-call-argument：key/runtime_dir 的实参顺序由公开 API 固定
+# modernize 检查保留 C++11 可用项；以下需要 C++14/17/20 或属于纯风格改写：
+# - avoid-c-arrays / concat-nested-namespaces / macro-to-enum
+# - make-unique / pass-by-value / unary-static-assert
+# - use-constraints / use-nodiscard / use-starts-ends-with / use-std-numbers / use-std-print
+# - use-trailing-return-type / use-transparent-functors
+Checks: >
+  -*,
+  clang-analyzer-*,
+  bugprone-*,
+  cert-*,
+  performance-*,
+  portability-*,
+  readability-*,
+  modernize-*,
+  -modernize-avoid-c-arrays,
+  -modernize-concat-nested-namespaces,
+  -modernize-macro-to-enum,
+  -modernize-make-unique,
+  -modernize-pass-by-value,
+  -modernize-unary-static-assert,
+  -modernize-use-constraints,
+  -modernize-use-nodiscard,
+  -modernize-use-starts-ends-with,
+  -modernize-use-std-numbers,
+  -modernize-use-std-print,
+  -modernize-use-trailing-return-type,
+  -modernize-use-transparent-functors,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-narrowing-conversions,
+  -performance-enum-size,
+  -readability-magic-numbers,
+  -readability-identifier-length,
+  -readability-function-cognitive-complexity,
+  -readability-function-size,
+  -readability-suspicious-call-argument
+
+HeaderFilterRegex: '(.*/)?include/singleproc/.*'
+FormatStyle: file
+CheckOptions:
+  - key: readability-identifier-naming.NamespaceCase
+    value: lower_case
+  - key: readability-identifier-naming.ClassCase
+    value: CamelCase
+  - key: readability-identifier-naming.StructCase
+    value: CamelCase
+  - key: readability-identifier-naming.UnionCase
+    value: CamelCase
+  - key: readability-identifier-naming.EnumCase
+    value: CamelCase
+  - key: readability-identifier-naming.EnumConstantCase
+    value: CamelCase
+  - key: readability-identifier-naming.TypeAliasCase
+    value: CamelCase
+  - key: readability-identifier-naming.TypedefCase
+    value: CamelCase
+  - key: readability-identifier-naming.TemplateParameterCase
+    value: CamelCase
+  - key: readability-identifier-naming.FunctionCase
+    value: lower_case
+  - key: readability-identifier-naming.MethodCase
+    value: lower_case
+  - key: readability-identifier-naming.VirtualMethodCase
+    value: lower_case
+  - key: readability-identifier-naming.GlobalFunctionCase
+    value: lower_case
+  - key: readability-identifier-naming.GlobalVariableCase
+    value: lower_case
+  - key: readability-identifier-naming.StaticVariableCase
+    value: lower_case
+  - key: readability-identifier-naming.LocalVariableCase
+    value: lower_case
+  - key: readability-identifier-naming.ParameterCase
+    value: lower_case
+  - key: readability-identifier-naming.MemberCase
+    value: lower_case
+  - key: readability-identifier-naming.PrivateMemberCase
+    value: lower_case
+  - key: readability-identifier-naming.PrivateMemberSuffix
+    value: '_'
+  - key: readability-identifier-naming.ProtectedMemberCase
+    value: lower_case
+  - key: readability-identifier-naming.ProtectedMemberSuffix
+    value: '_'
+  - key: readability-identifier-naming.PublicMemberCase
+    value: lower_case
+  - key: readability-identifier-naming.ConstexprVariableCase
+    value: lower_case
+  - key: readability-identifier-naming.ConstantCase
+    value: lower_case
+  - key: readability-identifier-naming.GlobalConstantCase
+    value: lower_case
+  - key: readability-identifier-naming.StaticConstantCase
+    value: lower_case
+  - key: readability-identifier-naming.LocalConstantCase
+    value: lower_case
+  - key: readability-identifier-naming.MacroDefinitionCase
+    value: UPPER_CASE
+  - key: readability-identifier-naming.IgnoreMainLikeFunctions
+    value: true
+  - key: readability-identifier-naming.IgnoreMacros
+    value: true

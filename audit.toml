@@ -1,0 +1,65 @@
+# audit 配置：real-esrguisoft 的静态检查门禁（cxx_audit / cpp_audit）
+#
+# 用法（在本仓库根目录执行）：
+#   Linux/WSL:
+#     PYTHONPATH=../cxx_audit/src python3 -m cpp_audit -c audit.toml check-config
+#     PYTHONPATH=../cxx_audit/src python3 -m cpp_audit -c audit.toml all
+#   Windows PowerShell:
+#     $env:PYTHONPATH = '..\cxx_audit\src'; python -m cpp_audit -c audit.toml all
+#
+# 本仓库当前只启用 compat（纯文本扫描、无外部依赖，Windows 与 Linux 结果一致）。
+# tidy / cpd / asan / valgrind 需要的外部工具在 Windows/MSYS2 UCRT64 上要么没装、
+# 要么不可用，故显式 enabled = false 并逐项注明原因；Linux/WSL 上补跑方式见
+# docs/ci.md「Linux/WSL 补跑」。
+#
+# 退出码：0 通过（含 SKIPPED）；1 有检查失败；2 配置/用法错误；130 用户中断。
+
+[project]
+name = "real-esrguisoft"
+root = "."
+# compat 只扫 src/：main.cpp 与 tests/ 是入口/测试代码，不参与兼容性约定。
+sources = ["src"]
+# 排除路径相对 project.root（不是 glob）。
+excludes = ["build", "dist", "third_party", ".git", ".qtcreator"]
+build_system = "cmake"
+project_file = "CMakeLists.txt"
+build_dir = "build/audit"
+target = "real-esrguisoft"
+
+[compat]
+# 本工程是 C++17/Qt6 工程，交接文档 §8.1-1 原本建议启用的 std_concurrency
+# 规则（“禁止 std 并发/时间组件，改用 Qt 对应组件”）当前会命中 4 条既有代码：
+#   src/infrastructure/media/ffmpegutils.cpp:3   #include <atomic>
+#   src/model/videoprocessservice.cpp:25         #include <atomic>
+#   src/model/videoprocessservice.cpp:652/653    std::atomic<bool> 成员
+# 在这几处改成 QAtomicInt / 去掉 <atomic> 之前，启用该规则会让门禁永久变红；
+# 因此这里只保留当前 0 命中的规则作为回归护栏（防止旧式可变参数模板进入 src/）。
+# 清理上述代码后把 "std_concurrency" 加回 rules 即可，做法见 docs/ci.md。
+enabled = true
+rules = ["variadic_template"]
+
+# 所有报告统一落 build/audit/reports/（被 .gitignore 的 build/ 覆盖），
+# 不往仓库根目录写 reports/。
+[reports]
+dir = "build/audit/reports"
+
+[tidy]
+# 关闭原因：clang-tidy 在 Windows/MSYS2 UCRT64 上不是默认安装项，需要额外
+# pacman 包；Windows 上保持门禁轻量。Linux/WSL 上可用显式子命令补跑（见 docs/ci.md）。
+# 若在 Linux 上把它改成 enabled = true，需要仓库根存在 .clang-tidy（已提供）。
+enabled = false
+
+[cpd]
+# 关闭原因：Windows 上没有 PMD CPD（需要 npm/Java 工具链）；且 UI 面板代码
+# 重复度较高，min_tokens 阈值需针对本工程单独标定后再启用。
+enabled = false
+
+[asan]
+# 关闭原因：Windows 上 MSYS2 GCC 的 libasan 与 Qt/FFmpeg 的动态库混用时运行期
+# 不稳定；ASan 建议在 Linux/WSL 上作为独立任务补跑（构建/运行参数见 docs/ci.md）。
+enabled = false
+
+[valgrind]
+# 关闭原因：valgrind 只有 Linux/macOS 版本，Windows 上不存在该工具
+# （交接文档 §8.2「Windows 缺 valgrind」）。
+enabled = false
