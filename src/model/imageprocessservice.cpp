@@ -13,6 +13,7 @@
 #include <QFileInfo>
 #include <QHash>
 #include <QImage>
+#include <QImageWriter>
 #include <QTemporaryDir>
 
 namespace
@@ -60,6 +61,54 @@ file_ready(const QString &v_file_path)
 {
 	const QFileInfo info(v_file_path);
 	return info.isFile() && info.size() > 0;
+}
+
+// 输出图片的编码质量（jpg / webp，0-100）。
+// realesrgan-ncnn-vulkan 没有质量参数：webp 输出固定为 VP8L 无损（体积大），
+// jpg 在输入含 alpha 时还会被改写成 "<name>.jpg.png"。因此产物统一在这里
+// 按目标格式以 95 质量重编码一次，保证扩展名、内容、体积三者一致。
+constexpr int K_OUTPUT_IMAGE_QUALITY = 95;
+
+// 目标路径扩展名 → Qt 编码器名（不支持的扩展名返回空）
+QByteArray
+output_image_format(const QString &v_path)
+{
+	const QString suffix = QFileInfo(v_path).suffix().toLower();
+	if (suffix == QStringLiteral("jpg") || suffix == QStringLiteral("jpeg"))
+	{
+		return QByteArrayLiteral("jpg");
+	}
+	if (suffix == QStringLiteral("png"))
+	{
+		return QByteArrayLiteral("png");
+	}
+	if (suffix == QStringLiteral("webp"))
+	{
+		return QByteArrayLiteral("webp");
+	}
+	return QByteArray();
+}
+
+// 先写临时文件再替换，避免编码失败时把已有产物写坏。
+bool
+encode_image_to(const QImage &v_image, const QString &v_path,
+				const QByteArray &v_format)
+{
+	const QString temp_path = v_path + QStringLiteral(".resr-enc");
+	QImageWriter writer(temp_path, v_format);
+	writer.setQuality(K_OUTPUT_IMAGE_QUALITY);
+	if (!writer.write(v_image))
+	{
+		QFile::remove(temp_path);
+		return false;
+	}
+	QFile::remove(v_path);
+	if (!QFile::rename(temp_path, v_path))
+	{
+		QFile::remove(temp_path);
+		return false;
+	}
+	return true;
 }
 
 // 把引擎的失败标记翻译成用户可读文案
@@ -502,7 +551,11 @@ ImageProcessService::start_engine(const QString &v_input_path,
 	m_engine_program = ExeCommand::realesrgan_executable(m_bin_directory);
 	m_engine_input = v_input_path;
 	m_engine_output = v_output_path;
-	m_engine_format = v_output_format;
+	// 引擎只产出无损 PNG：它既没有质量参数（webp 恒为 VP8L 无损），输入带
+	// alpha 时还会把 jpg 改名成 "<name>.jpg.png"。目标格式统一由本项目在
+	// 收尾阶段转换（见 commit_staged_output / finalize_batch_directory_output）。
+	Q_UNUSED(v_output_format);
+	m_engine_format = QStringLiteral("png");
 	m_engine_retry_used = false;
 	start_engine_attempt(false);
 }
@@ -815,13 +868,12 @@ ImageProcessService::staged_output_path(const QString &v_final_path) const
 {
 	// 与最终产物同目录（保证 rename 原子/同卷），隐藏前缀 + 固定后缀便于
 	// 崩溃后下一次任务自动清理残留。
+	// 扩展名恒为 .png：引擎只负责产出无损 PNG（见 start_engine），目标格式
+	// jpg / webp 由 commit_staged_output 在内存中转换，避免引擎在带 alpha
+	// 的输入上把 jpg 输出改名成 "<name>.jpg.png"。
 	const QFileInfo final_info(v_final_path);
-	QString name
-		= QStringLiteral(".%1.resr-part").arg(final_info.completeBaseName());
-	if (!final_info.suffix().isEmpty())
-	{
-		name += QStringLiteral(".") + final_info.suffix();
-	}
+	const QString name = QStringLiteral(".%1.resr-part.png")
+							 .arg(final_info.completeBaseName());
 	return QDir(final_info.absolutePath()).filePath(name);
 }
 
@@ -839,16 +891,34 @@ ImageProcessService::commit_staged_output(const QString &v_final_path,
 		return false;
 	}
 
-	// QFile::rename 在 Windows 上不能覆盖已存在的目标：先直接试（POSIX 原子
-	// 覆盖），失败且目标存在时再移除旧文件重试。避免“先删旧文件再发现改名
-	// 失败”把旧成品也弄丢。
-	bool renamed = QFile::rename(m_staged_output_path, v_final_path);
-	if (!renamed && QFileInfo::exists(v_final_path))
+	// 暂存文件永远是 PNG：目标也是 PNG 时直接改名（无损、不重编码），
+	// 否则解码到内存后按目标格式以固定质量编码，格式与扩展名严格一致。
+	const QByteArray format = output_image_format(v_final_path);
+	bool committed = false;
+	if (format.isEmpty() || format == QByteArrayLiteral("png"))
 	{
-		QFile::remove(v_final_path);
-		renamed = QFile::rename(m_staged_output_path, v_final_path);
+		// QFile::rename 在 Windows 上不能覆盖已存在的目标：先直接试（POSIX
+		// 原子覆盖），失败且目标存在时再移除旧文件重试。避免“先删旧文件再
+		// 发现改名失败”把旧成品也弄丢。
+		committed = QFile::rename(m_staged_output_path, v_final_path);
+		if (!committed && QFileInfo::exists(v_final_path))
+		{
+			QFile::remove(v_final_path);
+			committed = QFile::rename(m_staged_output_path, v_final_path);
+		}
 	}
-	if (!renamed)
+	else
+	{
+		const QImage image(m_staged_output_path);
+		committed = !image.isNull()
+					&& encode_image_to(image, v_final_path, format);
+		if (committed)
+		{
+			QFile::remove(m_staged_output_path);
+		}
+	}
+
+	if (!committed)
 	{
 		LOG_ERROR(QStringLiteral("Failed to commit staged output: %1 -> %2")
 					  .arg(m_staged_output_path, v_final_path));
@@ -1007,6 +1077,43 @@ ImageProcessService::on_runner_finished(bool v_process_ok, int v_exit_code,
 			// 上一次运行的同名旧产物或旧格式残留会把它算进去，导致改格式重跑
 			// 误报失败。这里要求每个输入对应的产物存在、非空且相对任务开始
 			// 时的快照确实更新。
+			// 目录模式：引擎以 -f png 直写输出目录，产物名为 "<stem>.png"。
+			// 这里逐个转成用户选择的目标格式（png 目标保持原名），再做产物校验，
+			// 避免把"引擎只写 PNG"误判成处理失败。
+			const MediaSettings batch_settings = batch_expected_settings();
+			for (const QString &batch_input : m_pending_files)
+			{
+				const QStringList expected_names
+					= OutputPathResolver::batch_output_file_names(
+						batch_input, batch_settings);
+				if (expected_names.isEmpty())
+				{
+					continue;
+				}
+				const QString source_png = QDir(m_output_path).filePath(
+					QFileInfo(batch_input).completeBaseName()
+					+ QStringLiteral(".png"));
+				const QString target_path
+					= QDir(m_output_path).filePath(expected_names.first());
+				if (!file_ready(source_png))
+				{
+					continue;
+				}
+				if (QFileInfo(source_png).absoluteFilePath()
+					== QFileInfo(target_path).absoluteFilePath())
+				{
+					continue;
+				}
+				const QImage image(source_png);
+				const QByteArray target_format
+					= output_image_format(target_path);
+				if (!image.isNull() && !target_format.isEmpty()
+					&& encode_image_to(image, target_path, target_format))
+				{
+					QFile::remove(source_png);
+				}
+			}
+
 			const QStringList unresolved
 				= OutputPathResolver::unresolved_batch_outputs(
 					m_pending_files, batch_expected_settings(), m_output_path,

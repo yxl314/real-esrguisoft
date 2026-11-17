@@ -23,6 +23,7 @@
 #include <QCloseEvent>
 #include <QDebug>
 #include <QCoreApplication>
+#include <QMetaObject>
 #include <QDragEnterEvent>
 #include <QDragLeaveEvent>
 #include <QDropEvent>
@@ -1595,7 +1596,12 @@ void
 MainWindow::force_close()
 {
 	m_force_close = true;
-	close();
+	// 不能在这里直接 close()：force_close() 常常是在 closeEvent 的处理栈内
+	// 被控制器同步调用的（用户点 X → event->ignore() → close_requested →
+	// 控制器判定可关 → force_close）。在事件处理途中重入 close()，Qt 会把
+	// 这次关闭并入外层事件，而外层已经 ignore()，结果窗口关不掉——表现为
+	// "需要点两次 X"。排队到事件循环下一轮，等外层 closeEvent 返回后再关。
+	QMetaObject::invokeMethod(this, [this]() { close(); }, Qt::QueuedConnection);
 }
 
 // ---------------------------------------------------------------------------
