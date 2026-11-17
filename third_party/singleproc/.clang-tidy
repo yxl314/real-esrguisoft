@@ -13,6 +13,10 @@
 # - make-unique / pass-by-value / unary-static-assert
 # - use-constraints / use-nodiscard / use-starts-ends-with / use-std-numbers / use-std-print
 # - use-trailing-return-type / use-transparent-functors
+# 字面量后缀检查（cert-dcl16-c / readability-uppercase-literal-suffix）在
+# clang-tidy 23（Windows 门禁）上会对 libstdc++ 系统头文件产生一条没有文件
+# 位置的裸 warning，cxx_audit 按行计数会把它算成项目告警；项目代码本身已全部
+# 使用大写后缀（本检查在项目代码上无命中），关闭以保持两个平台检查口径一致。
 Checks: >
   -*,
   clang-analyzer-*,
@@ -42,7 +46,9 @@ Checks: >
   -readability-identifier-length,
   -readability-function-cognitive-complexity,
   -readability-function-size,
-  -readability-suspicious-call-argument
+  -readability-suspicious-call-argument,
+  -cert-dcl16-c,
+  -readability-uppercase-literal-suffix
 
 HeaderFilterRegex: '(.*/)?include/singleproc/.*'
 FormatStyle: file

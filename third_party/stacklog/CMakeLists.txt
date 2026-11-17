@@ -5,19 +5,21 @@ project(stacklog
     DESCRIPTION "面向 C++ / Qt 项目的轻量日志库"
     LANGUAGES CXX)
 
-# 内嵌到 C++17 工程时沿用父工程的 C++ 标准，启用 std::filesystem 处理
-# UTF-8（中文）日志路径；独立构建（未设置标准）时保持 C++11，源码用
-# __cplusplus 条件编译自动退回窄字符实现。
-if(NOT CMAKE_CXX_STANDARD OR CMAKE_CXX_STANDARD LESS 17)
-    set(CMAKE_CXX_STANDARD 11)
-endif()
+set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 
-add_library(stacklog STATIC src/stacklog.cpp)
+# 平台端口：核心 stacklog.cpp 不含平台宏，适配器按平台二选一编译。
+if(WIN32)
+    set(STACKLOG_PLATFORM_SOURCE src/platform_win32.cpp)
+else()
+    set(STACKLOG_PLATFORM_SOURCE src/platform_posix.cpp)
+endif()
+
+add_library(stacklog STATIC src/stacklog.cpp ${STACKLOG_PLATFORM_SOURCE})
 add_library(stacklog::stacklog ALIAS stacklog)
 
 # 静态库也要位置无关：本库持有 thread_local 状态，被链进共享对象（例如
@@ -38,6 +40,9 @@ endif()
 find_package(Threads REQUIRED)
 target_link_libraries(stacklog PUBLIC Threads::Threads)
 
+# 作为子项目（add_subdirectory）使用时只提供构建目标，不生成安装与
+# CMake 包配置文件，避免打包工具的暂存前缀影响配置阶段。
+if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
 install(TARGETS stacklog
     EXPORT stacklogTargets
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
@@ -68,6 +73,8 @@ install(FILES
     ${CMAKE_CURRENT_BINARY_DIR}/stacklogConfig.cmake
     ${CMAKE_CURRENT_BINARY_DIR}/stacklogConfigVersion.cmake
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/stacklog)
+
+endif()
 
 if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
     set(STACKLOG_DEFAULT_TESTS ON)

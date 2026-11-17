@@ -55,15 +55,17 @@
 
 ## 第三方库（third_party/）
 
-| 库 | 用途 | 接入点 |
-| --- | --- | --- |
-| `stacklog` | 日志落盘、级别过滤、按大小轮转 | `src/common/logger.cpp` 兼容层；`resr_core` 链接 |
-| `singleproc` | 单实例守卫与二次启动门铃（POSIX + Windows） | `main.cpp`；可执行程序链接 |
+| 库 | 版本 / 上游 | 用途 | 接入点 |
+| --- | --- | --- | --- |
+| `stacklog` | 0.2.0（0189fe3） | 日志落盘、级别过滤、按大小轮转 | `src/common/logger.cpp` 兼容层；`resr_core` 链接 |
+| `singleproc` | 0.3.0（4521a6b） | 单实例守卫与二次启动门铃（POSIX + Windows） | `main.cpp`；可执行程序链接 |
 
 两个库都以 `add_subdirectory(... EXCLUDE_FROM_ALL)` 方式内嵌（见根
-`CMakeLists.txt`），各自保留独立的 CMakeLists、测试、LICENSE 与文档；
-另外各带一份 `.pri`，保留 qmake 可选接入能力。`stacklog` 在内嵌构建中沿用
-工程的 C++17 标准，启用 `std::filesystem` 以正确处理中文日志路径。
+`CMakeLists.txt`），各自保留独立的 CMakeLists、测试、LICENSE 与文档。
+上游最新平台层已拆分：`stacklog` 新增 `src/platform_*.cpp`（目录/时间/流/路径
+适配器），`singleproc` 的 Win32/POSIX 后端拆为 `src/platform_{win32,posix}.cpp`；
+两者按 C++11 编译、公开 API 不变，不再依赖 C++17 `std::filesystem`。
+`stacklog` 另带 `stacklog.pri` 保留 qmake 可选接入能力；`singleproc` 仅提供 CMake。
 
 ## 设置页与测试入口
 

@@ -16,7 +16,7 @@ excludes = ["build", ".git", "docs", "reports", "ci-logs"]
 build_system = "cmake"
 project_file = "CMakeLists.txt"
 build_dir = "build/audit"
-target = "singleproc_tests"
+target = "singleproc_guard_integration"
 
 [compat]
 # 本项目明确要求 C++11；compat 规则面向 C++98，启用只会产生系统性误报。
@@ -34,12 +34,15 @@ dirs = ["src", "include"]
 min_tokens = 50
 
 [asan]
-# ASan 在本机可正常构建并运行三组测试；若在受限容器中出现
-# AddressSanitizer 运行时初始化失败，再按环境关闭。
+# 默认启用（ASan 是默认内存检查门禁）。2026-11-17 在普通 Linux（Ubuntu 24.04
+# x86_64 / GCC 15.2）上以 -fsanitize=address 构建并跑通 7 个 unit/integration/
+# smoke 测试。当前 honor 的 PRoot 容器因 shadow 映射限制无法初始化，属特殊环境，
+# 不是代码问题；仅在该受限容器临时验证时可改 false 并在结果中注明，不要提交为
+# 默认值。Windows 上本项按平台跳过。
 enabled = true
 build_dir = "build/asan"
-targets = ["singleproc_tests", "singleproc_doorbell_tests", "singleproc_process_tests"]
-target_args = { singleproc_process_tests = ["build/asan/tests/singleproc_probe"] }
+targets = ["singleproc_guard_integration", "singleproc_doorbell_integration", "singleproc_process_integration"]
+target_args = { singleproc_process_integration = ["build/asan/tests/singleproc_probe"] }
 compiler = "clang++"
 cxxflags = ["-std=c++11", "-fsanitize=address",
             "-fsanitize-address-use-after-return=always",
@@ -53,8 +56,8 @@ timeout_sec = 120
 # 覆盖锁、门铃和进程三组测试。
 enabled = true
 build_dir = "build/debug"
-targets = ["singleproc_tests", "singleproc_doorbell_tests", "singleproc_process_tests"]
-target_args = { singleproc_process_tests = ["build/debug/tests/singleproc_probe"] }
+targets = ["singleproc_guard_integration", "singleproc_doorbell_integration", "singleproc_process_integration"]
+target_args = { singleproc_process_integration = ["build/debug/tests/singleproc_probe"] }
 compiler = "clang++"
 cxxflags = ["-std=c++11", "-g", "-O0"]
 tool = "memcheck"

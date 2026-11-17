@@ -16,7 +16,7 @@ excludes = ["build", ".git", "docs", "reports", "ci-logs"]
 build_system = "cmake"
 project_file = "CMakeLists.txt"
 build_dir = "build/audit"
-target = "stacklog_test_rotation_stress"
+target = "stacklog_integration_rotation_stress_flow"
 
 [compat]
 # 本项目明确要求 C++11；compat 规则面向 C++98，启用只会产生系统性误报。
@@ -34,8 +34,12 @@ dirs = ["src", "include"]
 min_tokens = 70
 
 [asan]
-# ASan 在本机可正常构建并运行；若在受限容器中出现运行时初始化失败，
-# 再按环境关闭。
+# 默认启用（ASan 是默认内存检查门禁）。2026-11-17 在普通 Linux（Ubuntu 24.04
+# x86_64 / GCC 15.2）上以 -fsanitize=address 构建并跑通 12 个 unit/integration/
+# smoke 测试。当前 honor 的 PRoot 容器因 shadow 映射限制无法初始化
+# （sanitizer_allocator_primary64.h 的 CHECK 失败，见 reports/asan.txt），属特殊
+# 环境，不是代码问题；仅在该受限容器临时验证时可改 false 并在结果中注明，不要
+# 提交为默认值。Windows 上本项按平台跳过。
 enabled = true
 build_dir = "build/asan"
 compiler = "clang++"

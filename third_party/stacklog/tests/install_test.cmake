@@ -11,8 +11,22 @@ set(run_dir "${consumer_dir}/run")
 file(REMOVE_RECURSE "${STACKLOG_BINARY_DIR}/install-test")
 file(MAKE_DIRECTORY "${consumer_dir}" "${run_dir}")
 
+# 多配置生成器（Visual Studio）的 install/build 必须显式指定配置。add_test 用
+# $<CONFIG> 把 ctest -C 选中的配置名传进来；单配置生成器不传 --config，否则导出
+# 的 imported target 会带上配置名，与无配置名的单配置构建对不上。
+set(build_config "Debug")
+if(DEFINED STACKLOG_BUILD_CONFIG AND NOT STACKLOG_BUILD_CONFIG STREQUAL "")
+    set(build_config "${STACKLOG_BUILD_CONFIG}")
+elseif(DEFINED ENV{CTEST_CONFIGURATION_TYPE} AND NOT "$ENV{CTEST_CONFIGURATION_TYPE}" STREQUAL "")
+    set(build_config "$ENV{CTEST_CONFIGURATION_TYPE}")
+endif()
+set(config_args "")
+if(STACKLOG_MULTI_CONFIG)
+    set(config_args "--config" "${build_config}")
+endif()
+
 execute_process(
-    COMMAND "${CMAKE_COMMAND}" --install "${STACKLOG_BINARY_DIR}" --prefix "${install_prefix}"
+    COMMAND "${CMAKE_COMMAND}" --install "${STACKLOG_BINARY_DIR}" --prefix "${install_prefix}" ${config_args}
     RESULT_VARIABLE install_result
     OUTPUT_VARIABLE install_output
     ERROR_VARIABLE install_error)
@@ -46,9 +60,15 @@ file(WRITE "${consumer_dir}/main.cpp"
 "}\n")
 
 set(configure_command "${CMAKE_COMMAND}" -S "${consumer_dir}" -B "${consumer_build}"
-    "-DCMAKE_PREFIX_PATH=${install_prefix}" "-DCMAKE_BUILD_TYPE=Debug")
+    "-DCMAKE_PREFIX_PATH=${install_prefix}" "-DCMAKE_BUILD_TYPE=${build_config}")
 if(DEFINED STACKLOG_CMAKE_GENERATOR AND NOT STACKLOG_CMAKE_GENERATOR STREQUAL "")
     list(APPEND configure_command -G "${STACKLOG_CMAKE_GENERATOR}")
+endif()
+# Windows 上用 Ninja 等单配置生成器时，cmake 在本脚本里找不到默认编译器，需要
+# 显式传入；Visual Studio 生成器自己选择工具链，传编译器路径反而会造成歧义。
+if(DEFINED STACKLOG_CXX_COMPILER AND NOT STACKLOG_CXX_COMPILER STREQUAL "" AND
+   NOT STACKLOG_CMAKE_GENERATOR MATCHES "Visual Studio")
+    list(APPEND configure_command "-DCMAKE_CXX_COMPILER=${STACKLOG_CXX_COMPILER}")
 endif()
 
 execute_process(COMMAND ${configure_command}
@@ -59,7 +79,7 @@ if(NOT configure_result EQUAL 0)
     message(FATAL_ERROR "consumer configure 失败:\n${configure_output}\n${configure_error}")
 endif()
 
-execute_process(COMMAND "${CMAKE_COMMAND}" --build "${consumer_build}" --parallel 4
+execute_process(COMMAND "${CMAKE_COMMAND}" --build "${consumer_build}" ${config_args} --parallel 4
     RESULT_VARIABLE build_result
     OUTPUT_VARIABLE build_output
     ERROR_VARIABLE build_error)
@@ -67,9 +87,22 @@ if(NOT build_result EQUAL 0)
     message(FATAL_ERROR "consumer build 失败:\n${build_output}\n${build_error}")
 endif()
 
-set(consumer_exe "${consumer_build}/stacklog_consumer")
-if(WIN32)
-    set(consumer_exe "${consumer_build}/Debug/stacklog_consumer.exe")
+# 单配置生成器（Makefiles/Ninja）直接输出在构建根目录，多配置生成器在
+# Debug/Release 子目录；按候选路径探测，避免依赖生成器类型。
+set(consumer_exe "")
+foreach(candidate
+    "${consumer_build}/${build_config}/stacklog_consumer.exe"
+    "${consumer_build}/stacklog_consumer"
+    "${consumer_build}/stacklog_consumer.exe"
+    "${consumer_build}/Debug/stacklog_consumer.exe"
+    "${consumer_build}/Release/stacklog_consumer.exe")
+    if(EXISTS "${candidate}")
+        set(consumer_exe "${candidate}")
+        break()
+    endif()
+endforeach()
+if(consumer_exe STREQUAL "")
+    message(FATAL_ERROR "找不到 consumer 可执行文件: ${consumer_build}")
 endif()
 
 execute_process(COMMAND "${consumer_exe}" WORKING_DIRECTORY "${run_dir}"

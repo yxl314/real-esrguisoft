@@ -1,11 +1,12 @@
-# ci 配置：real-esrguisoft 的构建/测试流水线（cxx_ci/ci）
+# ci 配置：real-esrguisoft 的构建/测试流水线（cxx_ci ci_tool）
 #
 # 用法（在本仓库根目录执行）：
-#   python3 ../cxx_ci/ci/ci.py -c ci.toml                 # clean -> configure -> build -> test
-#   python3 ../cxx_ci/ci/ci.py -c ci.toml --check-config   # 只校验配置/路径/工具
-#   python3 ../cxx_ci/ci/ci.py -c ci.toml --dry-run        # 打印执行计划，不产生副作用
-#   python3 ../cxx_ci/ci/ci.py -c ci.toml --steps clean,configure,build
-#   python3 ../cxx_ci/ci/ci.py -c ci.toml --jobs 8
+#   python3 ../cxx_ci/check.py ci --root .                  # clean -> configure -> build -> test
+#   PYTHONPATH=../cxx_ci/src python3 -m cxx_ci.ci_tool -c ci.toml --check-config
+#   PYTHONPATH=../cxx_ci/src python3 -m cxx_ci.ci_tool -c ci.toml --dry-run
+#   PYTHONPATH=../cxx_ci/src python3 -m cxx_ci.ci_tool -c ci.toml --steps clean,configure,build
+#   python3 ../cxx_ci/check.py ci --root . --jobs 8
+# 仓库根 ./check.sh 是 ci/style/audit 三个门禁的薄壳（all|ci|style|audit）。
 #
 # 平台说明（完整差异见 docs/ci.md）：
 #   - 目标环境：Windows 10/11 + MSYS2 UCRT64（Qt 6.11.2 / GCC 16.2 / Ninja / FFmpeg 9.0.2）。

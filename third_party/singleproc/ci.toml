@@ -1,8 +1,8 @@
 # cxx_ci 配置 —— singleproc
 #
 # 在仓库根目录运行：
-#     python3 ../cxx_ci/ci/ci.py ci.toml
-#     python3 ../cxx_ci/ci/ci.py ci.toml --steps clean,configure,build
+#     python3 ../cxx_ci/check.py ci --root .
+#     PYTHONPATH=../cxx_ci/src python3 -m cxx_ci.ci_tool --steps clean,configure,build
 name = "singleproc"
 build_system = "cmake"
 source_dir = "."

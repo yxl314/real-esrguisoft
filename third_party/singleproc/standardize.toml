@@ -1,9 +1,9 @@
 # cxx_ci/standardize 配置 —— singleproc
 #
 # 在仓库根目录运行：
-#     python3 ../cxx_ci/standardize/standardize.py --check
-#     python3 ../cxx_ci/standardize/standardize.py
-#     python3 ../cxx_ci/standardize/standardize.py --apply
+#     python3 ../cxx_ci/check.py style --root .
+#     PYTHONPATH=../cxx_ci/src python3 -m cxx_ci.standardize_tool --check
+#     PYTHONPATH=../cxx_ci/src python3 -m cxx_ci.standardize_tool --apply
 [standardize]
 paths = ["src", "include", "tests", "examples"]
 exclude = ["build", "third_party"]

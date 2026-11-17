@@ -8,6 +8,7 @@
 #include <cstring>
 #include <iostream>
 #include <string>
+#include <system_error>
 #include <thread>
 #include <vector>
 
@@ -38,7 +39,8 @@ bool remove_if_exists(const std::string& path)
     {
         return true;
     }
-    std::cerr << "cannot remove " << path << ": " << std::strerror(errno) << '\n';
+    std::cerr << "cannot remove " << path << ": " << std::error_code(errno, std::generic_category()).message()
+              << '\n';
     return false;
 }
 

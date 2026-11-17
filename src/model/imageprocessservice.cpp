@@ -95,9 +95,15 @@ encode_image_to(const QImage &v_image, const QString &v_path,
 				const QByteArray &v_format)
 {
 	const QString temp_path = v_path + QStringLiteral(".resr-enc");
-	QImageWriter writer(temp_path, v_format);
-	writer.setQuality(K_OUTPUT_IMAGE_QUALITY);
-	if (!writer.write(v_image))
+	bool encoded = false;
+	{
+		// QImageWriter 在作用域内持有临时文件句柄：Windows 上文件仍打开时
+		// rename 会失败，先让 writer 析构关闭句柄，再替换目标文件。
+		QImageWriter writer(temp_path, v_format);
+		writer.setQuality(K_OUTPUT_IMAGE_QUALITY);
+		encoded = writer.write(v_image);
+	}
+	if (!encoded)
 	{
 		QFile::remove(temp_path);
 		return false;
@@ -910,8 +916,8 @@ ImageProcessService::commit_staged_output(const QString &v_final_path,
 	else
 	{
 		const QImage image(m_staged_output_path);
-		committed = !image.isNull()
-					&& encode_image_to(image, v_final_path, format);
+		committed
+			= !image.isNull() && encode_image_to(image, v_final_path, format);
 		if (committed)
 		{
 			QFile::remove(m_staged_output_path);
@@ -1090,9 +1096,10 @@ ImageProcessService::on_runner_finished(bool v_process_ok, int v_exit_code,
 				{
 					continue;
 				}
-				const QString source_png = QDir(m_output_path).filePath(
-					QFileInfo(batch_input).completeBaseName()
-					+ QStringLiteral(".png"));
+				const QString source_png
+					= QDir(m_output_path)
+						  .filePath(QFileInfo(batch_input).completeBaseName()
+									+ QStringLiteral(".png"));
 				const QString target_path
 					= QDir(m_output_path).filePath(expected_names.first());
 				if (!file_ready(source_png))

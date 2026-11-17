@@ -244,17 +244,21 @@ build\tests\resr_pipeline_verify.exe --out build\verify
 门禁工具不随本仓库提交，需在工作区同级放置 `cxx_ci`、`cxx_audit` 两个工具仓库
 （详见 [docs/ci.md](docs/ci.md)）。
 
+仓库根提供 `./check.sh`（POSIX 薄壳，`all|ci|style|audit`）统一入口；也可直接跑
+`cxx_ci/check.py` 与 `cpp_audit`：
+
 ```bash
 # Linux / WSL：在仓库根执行
-python3 ../cxx_ci/ci/ci.py -c ci.toml                          # 构建+测试流水线
-python3 ../cxx_ci/standardize/standardize.py --check           # 排版检查（应为 0）
-PYTHONPATH=../cxx_audit/src python3 -m cpp_audit -c audit.toml all   # 静态检查
+./check.sh                    # ci + style + audit
+./check.sh ci                 # 构建+测试流水线
+./check.sh style              # 排版检查（应为 0；clang-format 版本见 docs/ci.md §7）
+./check.sh audit              # 静态检查
 ```
 
 ```powershell
-# Windows PowerShell
-python ..\cxx_ci\ci\ci.py -c ci.toml
-python ..\cxx_ci\standardize\standardize.py --check
+# Windows PowerShell（无 check.sh；直接用 cxx_ci/check.py 与 cpp_audit）
+python ..\cxx_ci\check.py ci --root .
+python ..\cxx_ci\check.py style --root .
 $env:PYTHONPATH = '..\cxx_audit\src'; python -m cpp_audit -c audit.toml all
 ```
 

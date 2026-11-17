@@ -1,9 +1,9 @@
-# standardize 配置：real-esrguisoft 的排版门禁（cxx_ci/standardize）
+# standardize 配置：real-esrguisoft 的排版门禁（cxx_ci standardize_tool）
 #
 # 用法（在本仓库根目录执行）：
-#   python3 ../cxx_ci/standardize/standardize.py --check     # 只检查，有 diff 退出 1
-#   python3 ../cxx_ci/standardize/standardize.py             # 生成 build/standardize/standardize.diff
-#   python3 ../cxx_ci/standardize/standardize.py --apply     # 复核 diff 后应用
+#   python3 ../cxx_ci/check.py style --root .                 # 只检查，有 diff 退出 1
+#   PYTHONPATH=../cxx_ci/src python3 -m cxx_ci.standardize_tool   # 生成 build/standardize/standardize.diff
+#   PYTHONPATH=../cxx_ci/src python3 -m cxx_ci.standardize_tool --apply
 #
 # 约定：
 #   - 排版规则全部来自仓库根的 .clang-format（由现有源码反推）。

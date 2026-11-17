@@ -1,22 +1,15 @@
 #include <stacklog/stacklog.hpp>
 
+#include "platform.hpp"
+
 #include <atomic>
-#include <cerrno>
 #include <chrono>
 #include <cstdio>
 #include <cstring>
-#include <ctime>
-#include <fstream>
+#include <memory>
 #include <mutex>
 #include <string>
 #include <vector>
-
-#if defined(__cplusplus) && __cplusplus >= 201703L
-#include <filesystem>
-#elif defined(_WIN32)
-#include <direct.h>
-#endif
-#include <sys/stat.h>
 
 namespace stacklog
 {
@@ -48,7 +41,7 @@ std::atomic<int> fallback_hinted(0);
 struct logger_state
 {
     std::mutex mutex;
-    std::ofstream file;
+    std::unique_ptr<platform::file_sink> file;
     config options;
     std::string path;
     std::uint64_t written_bytes = 0;
@@ -66,109 +59,23 @@ logger_state& state()
     return *instance;
 }
 
-#if defined(__cplusplus) && __cplusplus >= 201703L
-
-namespace fs = std::filesystem;
-
-/// 把 UTF-8 路径转换为平台路径。
-///
-/// 内嵌到 C++17 工程时启用：Windows 上按 UTF-8 解码，中文日志目录不会按
-/// 系统 ACP 错误解释；POSIX 上保持字节原样。C++11 构建仍走窄字符路径，
-/// 因此上游独立构建不受影响。
-fs::path to_fs_path(const std::string& path)
-{
-    return fs::u8path(path);
-}
-
-#endif
-
-#if defined(__cplusplus) && __cplusplus >= 201703L
-
-bool path_exists(const std::string& path)
-{
-    std::error_code error;
-    return fs::exists(to_fs_path(path), error);
-}
-
-#else
-
-bool path_exists(const std::string& path)
-{
-#ifdef _WIN32
-    struct _stat info;
-    return _stat(path.c_str(), &info) == 0;
-#else
-    struct stat info;
-    return ::stat(path.c_str(), &info) == 0;
-#endif
-}
-
-#endif
-
-#if defined(__cplusplus) && __cplusplus >= 201703L
-
-bool regular_file_size(const std::string& path, std::uint64_t& size)
-{
-    std::error_code error;
-    const fs::path converted = to_fs_path(path);
-    if (!fs::is_regular_file(converted, error) || error)
-    {
-        return false;
-    }
-    const std::uintmax_t file_size = fs::file_size(converted, error);
-    if (error)
-    {
-        return false;
-    }
-    size = static_cast<std::uint64_t>(file_size);
-    return true;
-}
-
-#else
-
-bool regular_file_size(const std::string& path, std::uint64_t& size)
-{
-#ifdef _WIN32
-    struct _stat info;
-    if (_stat(path.c_str(), &info) != 0 || (info.st_mode & _S_IFMT) != _S_IFREG)
-    {
-        return false;
-    }
-#else
-    struct stat info;
-    if (::stat(path.c_str(), &info) != 0 || !S_ISREG(info.st_mode))
-    {
-        return false;
-    }
-#endif
-    size = static_cast<std::uint64_t>(info.st_size);
-    return true;
-}
-
-#endif
-
 /// 以追加方式重新打开当前日志文件，并从实际文件大小恢复写入计数。
 bool open_append_locked(logger_state& logger)
 {
-    // 写失败后 ready=false，但流可能仍是打开状态；basic_filebuf::open()
-    // 不允许对已打开的流再次 open，不先 close 的话重试永远不会成功。
-    if (logger.file.is_open())
+    if (logger.file)
     {
-        logger.file.close();
+        logger.file->close();
+        logger.file.reset();
     }
-    logger.file.clear();
-#if defined(__cplusplus) && __cplusplus >= 201703L
-    logger.file.open(to_fs_path(logger.path), std::ios::out | std::ios::app | std::ios::binary);
-#else
-    logger.file.open(logger.path.c_str(), std::ios::out | std::ios::app | std::ios::binary);
-#endif
-    if (!logger.file.is_open())
+    logger.file = platform::open_append(logger.path);
+    if (!logger.file || !logger.file->is_open())
     {
+        logger.file.reset();
         return false;
     }
 
     std::uint64_t size = 0;
-    logger.written_bytes = regular_file_size(logger.path, size) ? size : 0;
+    logger.written_bytes = platform::regular_file_size(logger.path, size) ? size : 0;
     return true;
 }
 
@@ -237,102 +144,6 @@ std::string base_name(const char* file)
     }
     return (nullptr == slash) ? std::string(file) : std::string(slash + 1);
 }
-
-std::string timestamp()
-{
-    const std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
-    const std::time_t seconds = std::chrono::system_clock::to_time_t(now);
-    const long long milliseconds =
-        std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count() % 1000;
-
-    std::tm tm_value;
-    std::memset(&tm_value, 0, sizeof(tm_value));
-#ifdef _WIN32
-    (void)localtime_s(&tm_value, &seconds);
-#else
-    (void)localtime_r(&seconds, &tm_value);
-#endif
-
-    char buffer[32];
-    (void)std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &tm_value);
-    char result[40];
-    (void)std::snprintf(result, sizeof(result), "%s.%03lld", buffer, milliseconds);
-    return {result};
-}
-
-std::string join_path(const std::string& dir, const std::string& name)
-{
-    if (dir.empty())
-    {
-        return name;
-    }
-    const char last = dir[dir.size() - 1];
-    if (last == '/' || last == '\\')
-    {
-        return dir + name;
-    }
-    return dir + "/" + name;
-}
-
-#if defined(__cplusplus) && __cplusplus >= 201703L
-
-/// 递归创建日志目录；C++17 下按平台路径解码，支持中文目录。
-bool make_dirs(const std::string& dir)
-{
-    if (dir.empty())
-    {
-        return true;
-    }
-    std::error_code error;
-    (void)fs::create_directories(to_fs_path(dir), error);
-    return !error;
-}
-
-#else
-
-bool make_one_dir(const std::string& path)
-{
-    if (path.empty())
-    {
-        return true;
-    }
-#ifdef _WIN32
-    const int result = _mkdir(path.c_str());
-#else
-    const int result = ::mkdir(path.c_str(), 0755);
-#endif
-    return result == 0 || errno == EEXIST;
-}
-
-bool make_dirs(const std::string& dir)
-{
-    if (dir.empty() || dir == ".")
-    {
-        return true;
-    }
-
-    // 逐级创建父目录；跳过根目录和 Windows 盘符。
-    for (std::string::size_type i = 1; i < dir.size(); ++i)
-    {
-        const char ch = dir[i];
-        if (ch != '/' && ch != '\\')
-        {
-            continue;
-        }
-        const std::string parent = dir.substr(0, i);
-        if (parent.empty() || parent == "/" || (parent.size() == 2 && parent[1] == ':'))
-        {
-            continue;
-        }
-        if (!make_one_dir(parent))
-        {
-            return false;
-        }
-    }
-    return make_one_dir(dir);
-}
-
-#endif
 
 trace_context& thread_trace_context()
 {
@@ -416,61 +227,32 @@ format_line(level severity, const trace_frame* frame, const std::string& message
     const std::string location = escape_field(base_name(file) + ":" + std::to_string(line));
 
     std::string result;
-    result += timestamp();
-    result += "|";
+    result += platform::timestamp();
+    result += '|';
     result += level_name(severity);
-    result += "|";
+    result += '|';
     result += trace_id;
-    result += "|";
+    result += '|';
     result += node_id;
-    result += "|";
+    result += '|';
     result += parent_id;
-    result += "|";
+    result += '|';
     result += scope_name;
-    result += "|";
+    result += '|';
     result += location;
-    result += "|";
+    result += '|';
     result += escape_field(dash_if_empty(message));
     return result;
 }
 
-#if defined(__cplusplus) && __cplusplus >= 201703L
-
-/// 删除文件；文件不存在也算成功。C++17 下走平台路径解码，支持中文路径。
-bool remove_path(const std::string& path)
-{
-    std::error_code error;
-    (void)fs::remove(to_fs_path(path), error);
-    return !error;
-}
-
-/// 重命名文件。C++17 下走平台路径解码，支持中文路径。
-bool rename_path(const std::string& from, const std::string& to)
-{
-    std::error_code error;
-    fs::rename(to_fs_path(from), to_fs_path(to), error);
-    return !error;
-}
-
-#else
-
-bool remove_path(const std::string& path)
-{
-    return std::remove(path.c_str()) == 0;
-}
-
-bool rename_path(const std::string& from, const std::string& to)
-{
-    return std::rename(from.c_str(), to.c_str()) == 0;
-}
-
-#endif
-
 void rotate_locked(logger_state& logger)
 {
-    logger.file.flush();
-    logger.file.close();
-    logger.file.clear();
+    if (logger.file)
+    {
+        logger.file->flush();
+        logger.file->close();
+        logger.file.reset();
+    }
 
     const std::string base = logger.path;
     bool ok = true;
@@ -478,7 +260,7 @@ void rotate_locked(logger_state& logger)
     if (logger.options.max_files > 0)
     {
         const std::string oldest = base + "." + std::to_string(logger.options.max_files);
-        if (path_exists(oldest) && !remove_path(oldest))
+        if (platform::path_exists(oldest) && !platform::remove_file(oldest))
         {
             ok = false;
         }
@@ -489,16 +271,16 @@ void rotate_locked(logger_state& logger)
             {
                 const std::string from = base + "." + std::to_string(index - 1);
                 const std::string to = base + "." + std::to_string(index);
-                if (!path_exists(from))
+                if (!platform::path_exists(from))
                 {
                     continue;
                 }
-                if (path_exists(to) && !remove_path(to))
+                if (platform::path_exists(to) && !platform::remove_file(to))
                 {
                     ok = false;
                     break;
                 }
-                if (!rename_path(from, to))
+                if (!platform::rename_file(from, to))
                 {
                     ok = false;
                     break;
@@ -506,10 +288,10 @@ void rotate_locked(logger_state& logger)
             }
         }
 
-        if (ok && path_exists(base))
+        if (ok && platform::path_exists(base))
         {
             const std::string first = base + ".1";
-            if ((path_exists(first) && !remove_path(first)) || !rename_path(base, first))
+            if ((platform::path_exists(first) && !platform::remove_file(first)) || !platform::rename_file(base, first))
             {
                 ok = false;
             }
@@ -552,8 +334,11 @@ bool init(const config& cfg)
     current_level.store(static_cast<int>(cfg.min_level));
     logger.active = false;
     logger.ready = false;
-    logger.file.close();
-    logger.file.clear();
+    if (logger.file)
+    {
+        logger.file->close();
+        logger.file.reset();
+    }
     logger.options = cfg;
     logger.path.clear();
     logger.written_bytes = 0;
@@ -567,9 +352,17 @@ bool init(const config& cfg)
         return false;
     }
 
-    logger.path = join_path(cfg.dir, cfg.base_name + ".log");
+    logger.path = platform::join_path(cfg.dir, cfg.base_name + ".log");
 
-    if (!make_dirs(cfg.dir))
+    // Windows 需要把整条路径转成 UTF-16；非法 UTF-8 必须在创建目录之前失败，
+    // 否则 init 返回 false 却会留下一个空目录。POSIX 端口恒返回 true。
+    if (!platform::valid_utf8_path(logger.path))
+    {
+        (void)std::fprintf(stderr, "stacklog: 路径不是合法 UTF-8，初始化失败\n");
+        return false;
+    }
+
+    if (!platform::make_dirs(cfg.dir))
     {
         (void)std::fprintf(stderr, "stacklog: 无法创建日志目录: %s\n", cfg.dir.c_str());
         return false;
@@ -590,10 +383,11 @@ void shutdown()
 {
     logger_state& logger = state();
     std::lock_guard<std::mutex> lock(logger.mutex);
-    if (logger.file.is_open())
+    if (logger.file)
     {
-        logger.file.flush();
-        logger.file.close();
+        logger.file->flush();
+        logger.file->close();
+        logger.file.reset();
     }
     logger.active = false;
     logger.ready = false;
@@ -657,12 +451,15 @@ void detail::log_line::write_line(level severity, const char* file, int line, co
             {
                 logger.writes_since_check = 0;
                 std::uint64_t actual_size = 0;
-                if (!regular_file_size(logger.path, actual_size) || actual_size != logger.written_bytes)
+                if (!platform::regular_file_size(logger.path, actual_size) || actual_size != logger.written_bytes)
                 {
                     // 文件被外部删除、截断或轮转后，重新打开路径上的文件。
-                    logger.file.flush();
-                    logger.file.close();
-                    logger.file.clear();
+                    if (logger.file)
+                    {
+                        logger.file->flush();
+                        logger.file->close();
+                        logger.file.reset();
+                    }
                     logger.written_bytes = 0;
                     logger.ready = open_append_locked(logger);
                     logger.rotation_retry_size = 0;
@@ -681,12 +478,9 @@ void detail::log_line::write_line(level severity, const char* file, int line, co
                 rotate_locked(logger);
             }
 
-            if (logger.ready && logger.file.is_open())
+            if (logger.ready && logger.file && logger.file->is_open())
             {
-                logger.file.write(text.c_str(), static_cast<std::streamsize>(text.size()));
-                logger.file.put('\n');
-                logger.file.flush();
-                if (logger.file.good())
+                if (logger.file->write_line(text))
                 {
                     logger.written_bytes += required;
                     written = true;

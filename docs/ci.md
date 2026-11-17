@@ -14,8 +14,8 @@
 
 | 工具 | 入口 | Python | 主要外部依赖 |
 | --- | --- | --- | --- |
-| cxx_ci/ci | `../cxx_ci/ci/ci.py` | 3.4+ | cmake、ninja、ctest、编译器（Qt/FFmpeg 见构建文档） |
-| cxx_ci/standardize | `../cxx_ci/standardize/standardize.py` | 3.4+ | clang-format（Windows 需自行安装，见 §5） |
+| cxx_ci/ci | `../cxx_ci/check.py ci --root .`（配置由 `ci.toml` 承载） | 3.4+ | cmake、ninja、ctest、编译器（Qt/FFmpeg 见构建文档） |
+| cxx_ci/standardize | `../cxx_ci/check.py style --root .`（配置由 `standardize.toml` 承载） | 3.4+ | clang-format（Windows 需自行安装，见 §5） |
 | cxx_audit | `../cxx_audit/src` 的 `cpp_audit` 模块 | 3.11+ | compat 无依赖；tidy/cpd/asan/valgrind 各需对应工具（见 §6） |
 
 三份配置都在仓库根：`ci.toml`、`standardize.toml`、`audit.toml`；排版规则在
@@ -33,10 +33,10 @@
 $env:Path = 'C:\msys64\ucrt64\bin;' + $env:Path
 
 # 1) 构建 + 测试流水线：clean -> configure -> build -> test
-python ..\cxx_ci\ci\ci.py -c ci.toml
+python ..\cxx_ci\check.py ci --root .
 
 # 2) 排版检查（有 diff 时退出码 1，只报告、不改文件）
-python ..\cxx_ci\standardize\standardize.py --check
+python ..\cxx_ci\check.py style --root .
 
 # 3) 静态检查（本机可跑的部分：compat）
 $env:PYTHONPATH = '..\cxx_audit\src'
@@ -47,10 +47,10 @@ python -m cpp_audit -c audit.toml all
 
 ```bash
 # 1) 构建 + 测试流水线
-python3 ../cxx_ci/ci/ci.py -c ci.toml
+python3 ../cxx_ci/check.py ci --root .
 
 # 2) 排版检查
-python3 ../cxx_ci/standardize/standardize.py --check
+python3 ../cxx_ci/check.py style --root .
 
 # 3) 静态检查
 PYTHONPATH=../cxx_audit/src python3 -m cpp_audit -c audit.toml all
@@ -59,8 +59,8 @@ PYTHONPATH=../cxx_audit/src python3 -m cpp_audit -c audit.toml all
 `cxx_ci` 与 `cxx_audit` 都支持只校验、不产生副作用的预检（推荐先跑）：
 
 ```bash
-python3 ../cxx_ci/ci/ci.py -c ci.toml --check-config   # 配置/路径/工具
-python3 ../cxx_ci/ci/ci.py -c ci.toml --dry-run        # 打印执行计划
+PYTHONPATH=../cxx_ci/src python3 -m cxx_ci.ci_tool -c ci.toml --check-config   # 配置/路径/工具
+PYTHONPATH=../cxx_ci/src python3 -m cxx_ci.ci_tool -c ci.toml --dry-run        # 打印执行计划
 PYTHONPATH=../cxx_audit/src python3 -m cpp_audit -c audit.toml check-config
 PYTHONPATH=../cxx_audit/src python3 -m cpp_audit -c audit.toml --dry-run all
 ```
@@ -128,8 +128,8 @@ PYTHONPATH=../cxx_audit/src python3 -m cpp_audit -c audit.toml --dry-run all
 常用变体：
 
 ```bash
-python3 ../cxx_ci/ci/ci.py -c ci.toml --steps clean,configure,build  # 只构建
-python3 ../cxx_ci/ci/ci.py -c ci.toml --jobs 8                      # 覆盖并行度
+PYTHONPATH=../cxx_ci/src python3 -m cxx_ci.ci_tool -c ci.toml --steps clean,configure,build  # 只构建
+PYTHONPATH=../cxx_ci/src python3 -m cxx_ci.ci_tool -c ci.toml --jobs 8                      # 覆盖并行度
 ```
 
 失败处理：
@@ -166,14 +166,14 @@ python3 ../cxx_ci/ci/ci.py -c ci.toml --jobs 8                      # 覆盖并�
 
 ```bash
 # 1) 检查：有 diff 退出码 1（CI/门禁用这一条，只读源码）
-python3 ../cxx_ci/standardize/standardize.py --check
+python3 ../cxx_ci/check.py style --root .
 
 # 2) 生成 diff 供复核（默认只生成、不修改源码）
-python3 ../cxx_ci/standardize/standardize.py
+PYTHONPATH=../cxx_ci/src python3 -m cxx_ci.standardize_tool
 #    -> build/standardize/standardize.diff
 
 # 3) 复核后应用；应用时会检测源文件是否在暂存后被改过
-python3 ../cxx_ci/standardize/standardize.py --apply
+PYTHONPATH=../cxx_ci/src python3 -m cxx_ci.standardize_tool --apply
 ```
 
 退出码：`0` 无需修改；`1` `--check` 模式存在 diff；`2` 工具/配置/文件处理失败；
@@ -234,9 +234,9 @@ src/model/videoprocessservice.cpp:652/653    std::atomic<bool> 成员
 
 | 能力 | Windows 10/11 + MSYS2 UCRT64（目标） | Linux（本机） | 降级/替代 |
 | --- | --- | --- | --- |
-| `ci.py` clean/configure/build | 支持（Ninja + UCRT64） | 支持（系统 Qt6/FFmpeg） | — |
-| `ci.py` test | 全部用例可跑（`resr_tests` + `resr_media_tests`） | 跑通；`resr_tests` 中 4 条依赖 Windows 引擎的链路用例 `QSKIP` 并注明原因，其余通过 | 只跑媒体层：`ctest -R resr_media_tests` |
-| `standardize.py` | 需自行安装 clang-format（见下） | 系统 clang-format 即可 | MSYS2：`pacman -S mingw-w64-ucrt-x86_64-clang`（clang-format 随 clang 包提供；若包名随镜像不同，用 `pacman -F clang-format` 查） |
+| `ci_tool` clean/configure/build | 支持（Ninja + UCRT64） | 支持（系统 Qt6/FFmpeg） | — |
+| `ci_tool` test | 全部用例可跑（`resr_tests` + `resr_media_tests`） | 跑通；`resr_tests` 中 4 条依赖 Windows 引擎的链路用例 `QSKIP` 并注明原因，其余通过 | 只跑媒体层：`ctest -R resr_media_tests` |
+| `standardize_tool` | 需自行安装 clang-format（见下） | 系统 clang-format 即可 | MSYS2：`pacman -S mingw-w64-ucrt-x86_64-clang`（clang-format 随 clang 包提供；若包名随镜像不同，用 `pacman -F clang-format` 查） |
 | `cpp_audit compat` | 支持（纯 Python 文本扫描） | 支持 | — |
 | `cpp_audit tidy` | 默认关闭；装 `clang-tools-extra` 后可显式跑 | 可用 | 见 §6.1 |
 | `cpp_audit cpd` | 默认关闭（缺 PMD） | 可用（需 `pmd-bin`） | 见 §6.2 |
@@ -381,6 +381,34 @@ python C:/Users/yxl/Desktop/code/cxx_pkg/cxx_pkg.py -c cxx_pkg.ini
    报 diff（修复文件本身 0 diff），属版本差而非代码问题。**建议 CI 与本地统一固定
    clang-format 21.x**（Windows 可 `pacman -S mingw-w64-ucrt-x86_64-clang-tools-extra`
    后降级对应版本，或用脚本固定下载）。
+5. **2026-11-17 复核（内嵌库更新后）**：Linux/x86_64 开发机（Qt 6.10.2、FFmpeg 8、
+   CMake 4.2、Ninja 1.13、GCC 15）上 `check.py ci` 全绿：configure/build/test 通过，
+   ctest 3/3（`resr_tests` 内 4 条依赖 Windows 引擎的链路用例 `QSKIP`、其余通过）；
+   `cpp_audit all` 0 命中。`check.py style` 用默认 clang-format 22.1.2 时在 4 个
+   **未改动基线文件**上报 diff，按第 4 条换成建议的 clang-format 21.1.8 后
+   `changed: 0`。cxx_pkg 的 `--check-config`/`--dry-run` 在 Linux 上通过（退出 0，
+   只校验/打印计划，未产物）；因为 `cxx_pkg.ini` 不再写死 `qt.prefix`，改由 PATH 中的
+   `qmake -query` 定位 Qt，兼容 `C:/msys2`、`C:/msys64` 两种 MSYS2 安装布局。
+6. **2026-11-17 Windows 复核**（测试机 MSYS2 UCRT64：Qt 6.12.0、GCC 16.2、
+   CMake 4.5.0、Ninja 1.13.2、FFmpeg 9.0 dev）：`check.py ci` 全绿
+   （clean/configure/build/test，106s；ctest 3/3 通过，`-LE engine` 排除真实 GPU
+   引擎用例）。构建仅 `src/infrastructure/exerunner.cpp` 2 条既有
+   `-Wcast-function-type` 警告（FARPROC 强转，非内嵌库改动引入）；`cpp_audit all`
+   0 命中；`cxx_pkg --check-config`/`--dry-run` 通过（prefix 不再写死后由
+   `qmake -query` 自动定位 Qt）。**真实打包成功**：`cxx_pkg` 全流程产出
+   `dist/real-esrguisoft-1.0.0-win64.zip` + `SHA256SUMS`（PE 导入闭包从
+   `[build] lib_dirs` 补齐 102 个 DLL、31 个 PE 文件，全部解析；dist/ 被忽略，
+   不入库）。打包配置现用 `install = false` 跳过安装（远程 7d46922），不再依赖
+   install 收编第三方库；同时根 `CMakeLists.txt` 保留占位前缀适配：上游 singleproc
+   的 `install()/configure_package_config_file()` 未按“仅顶层项目”收窄
+   （stacklog 已收窄），任何以 `-DCMAKE_INSTALL_PREFIX=/` 配置的场景仍会触发
+   `CMakePackageConfigHelpers` 的 `file RELATIVE_PATH must be passed a full path`，
+   故引入 singleproc 期间临时使用占位前缀、随后恢复（防御性，不影响正常构建）。
+   另：远程 774bc84 的 jpg/webp 收尾在写临时文件后立即 `QFile::rename`，Windows
+   上 `QImageWriter` 仍持有句柄会让 rename 失败（`image_engine_crash_retry` 报
+   “无法写入输出文件”）；已把 writer 收进作用域、析构关闭句柄后再 rename，编码
+   语义不变，仅修 Windows 句柄顺序。
+   `check.py style` 未跑：MSYS2 环境未装 clang-format（见第 4 条）。
 
 ---
 
@@ -388,6 +416,6 @@ python C:/Users/yxl/Desktop/code/cxx_pkg/cxx_pkg.py -c cxx_pkg.ini
 
 | 工具 | 0 | 1 | 2 | 130 |
 | --- | --- | --- | --- | --- |
-| `ci.py` | 全部阶段成功 | 某阶段失败（configure/build/test 未通过） | 配置/用法错误、工具缺失 | 用户中断 |
-| `standardize.py` | 无需修改（非 `--check` 时生成 diff 也返回 0） | `--check` 模式存在 diff | 工具/配置/文件处理失败 | 用户中断 |
+| `ci_tool` | 全部阶段成功 | 某阶段失败（configure/build/test 未通过） | 配置/用法错误、工具缺失 | 用户中断 |
+| `standardize_tool` | 无需修改（非 `--check` 时生成 diff 也返回 0） | `--check` 模式存在 diff | 工具/配置/文件处理失败 | 用户中断 |
 | `cpp_audit` | 检查通过（含 SKIPPED） | 检查执行完成但有失败项 | 配置/用法错误（或 `build` 子命令构建失败） | 用户中断 |
