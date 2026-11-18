@@ -82,21 +82,7 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/third_party/stacklog/CMakeLists.txt)
     add_subdirectory(third_party/stacklog EXCLUDE_FROM_ALL)
 endif()
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/third_party/singleproc/CMakeLists.txt)
-    # singleproc 的 install()/configure_package_config_file() 未按“仅顶层项目”
-    # 收窄，子目录引入时仍会在 configure 阶段执行。cxx_pkg 打包用
-    # -DCMAKE_INSTALL_PREFIX=/ 做自包含 staging，根前缀会让
-    # CMakePackageConfigHelpers 计算相对路径时报错。这里在引入期间临时改用
-    # 构建目录下的占位前缀，配置完恢复；EXCLUDE_FROM_ALL 子项目的安装规则
-    # 不进本工程安装集，占位前缀不会出现在产物里。
-    if(CMAKE_INSTALL_PREFIX STREQUAL "/")
-        set(RESR_SAVED_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}")
-        set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/_resr_third_party_prefix")
-    endif()
     add_subdirectory(third_party/singleproc EXCLUDE_FROM_ALL)
-    if(DEFINED RESR_SAVED_INSTALL_PREFIX)
-        set(CMAKE_INSTALL_PREFIX "${RESR_SAVED_INSTALL_PREFIX}")
-        unset(RESR_SAVED_INSTALL_PREFIX)
-    endif()
 endif()
 
 # ---------------------------------------------------------------------------

@@ -399,11 +399,9 @@ python C:/Users/yxl/Desktop/code/cxx_pkg/cxx_pkg.py -c cxx_pkg.ini
    `dist/real-esrguisoft-1.0.0-win64.zip` + `SHA256SUMS`（PE 导入闭包从
    `[build] lib_dirs` 补齐 102 个 DLL、31 个 PE 文件，全部解析；dist/ 被忽略，
    不入库）。打包配置现用 `install = false` 跳过安装（远程 7d46922），不再依赖
-   install 收编第三方库；同时根 `CMakeLists.txt` 保留占位前缀适配：上游 singleproc
-   的 `install()/configure_package_config_file()` 未按“仅顶层项目”收窄
-   （stacklog 已收窄），任何以 `-DCMAKE_INSTALL_PREFIX=/` 配置的场景仍会触发
-   `CMakePackageConfigHelpers` 的 `file RELATIVE_PATH must be passed a full path`，
-   故引入 singleproc 期间临时使用占位前缀、随后恢复（防御性，不影响正常构建）。
+   install 收编第三方库；cxx_pkg 的 `install = false` 模式在 configure 阶段
+   不传 `-DCMAKE_INSTALL_PREFIX=/`，因此根 `CMakeLists.txt` 不再需要为
+   singleproc 的安装规则做占位前缀适配，直接 `add_subdirectory` 即可。
    另：远程 774bc84 的 jpg/webp 收尾在写临时文件后立即 `QFile::rename`，Windows
    上 `QImageWriter` 仍持有句柄会让 rename 失败（`image_engine_crash_retry` 报
    “无法写入输出文件”）；已把 writer 收进作用域、析构关闭句柄后再 rename，编码
