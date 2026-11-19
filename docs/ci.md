@@ -415,8 +415,9 @@ python -m cxx_pkg -c cxx_pkg.toml
    `check.py style` 未跑：MSYS2 环境未装 clang-format（见第 4 条）。
 
 7. **2026-11-19 工具链适配**：内嵌 `third_party/stacklog` 同步到 8fd01bc、
-   `third_party/singleproc` 同步到 d2618d2（上游已删除各自 `docs/`，内嵌副本随
-   全量同步移除；旧副本与上游删除前内容逐字节一致，无本地改动丢失）；`main.cpp`
+   `third_party/singleproc` 同步到 a7b84ef（含上游 Windows 修复：`windows.h` 必须
+   先于 `sddl.h` 包含，解决 MinGW `WINADVAPI` 编译失败；同步同时移除上游已删除的
+   `docs/`，旧副本与上游删除前内容逐字节一致，无本地改动丢失）；`main.cpp`
    适配 singleproc 新 API（`singleproc::guard` / `guard::status`）。配置侧：
    `cxx_pkg.ini` 迁移为 TOML `cxx_pkg.toml`（`build.install = false`、
    `package.files/dirs`、`qt.enabled`），`CMakeLists.txt` 的版本一致性检查改为
