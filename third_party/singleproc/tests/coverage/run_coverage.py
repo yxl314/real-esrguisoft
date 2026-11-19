@@ -10,7 +10,7 @@
    未覆盖分支除非在 tests/coverage/branch_whitelist.txt 中给出理由，否则
    脚本非零退出。
 
-公开函数 = include/singleproc/singleproc.hpp 里声明的 Guard 公开成员；
+公开函数 = include/singleproc/singleproc.hpp 里声明的 guard 公开成员；
 其实现位于 src/singleproc.cpp。“异常分支”指 gcov 标记 throw=True 的分支，
 按任务约定不计入分母；其余不可达分支必须写进白名单并给理由，不允许静默排除。
 """
@@ -25,7 +25,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-PUBLIC_PREFIX = "singleproc::Guard::"
+PUBLIC_PREFIX = "singleproc::guard::"
 WHITELIST_NAME = "branch_whitelist.txt"
 
 

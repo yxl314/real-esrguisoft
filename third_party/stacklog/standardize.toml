@@ -1,16 +1,21 @@
-# cxx_ci/standardize 配置 —— stacklog
+# cxx-standardize 配置 —— stacklog
 #
 # 在仓库根目录运行：
-#     python3 ../cxx_ci/check.py style --root .
-#     PYTHONPATH=../cxx_ci/src python3 -m cxx_ci.standardize_tool --check
-#     PYTHONPATH=../cxx_ci/src python3 -m cxx_ci.standardize_tool --apply
+#     cxx-standardize -c standardize.toml --check
+#     cxx-standardize -c standardize.toml --apply
 [standardize]
 paths = ["src", "include", "tests", "examples/cpp_demo"]
 exclude = ["build", "third_party"]
-# 复用 cxx_ci 生成的 compile_commands.json，避免旧 build/ 下的 DB 混入。
+# 复用 cxx-ci 生成的 compile_commands.json，避免旧 build/ 下的 DB 混入。
 build_dir = "build/ci"
 diff = "standardize.diff"
 stage_dir = ".standardize"
 auto_compile_commands = true
 tidy = true
 format = true
+
+# 启用两个内置头文件扩展：先重排类成员区，再对齐注释。
+extensions = [
+  "order_header_sections",
+  { name = "align_comments", tab_width = 4, use_tabs = false },
+]

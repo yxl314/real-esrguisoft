@@ -173,13 +173,14 @@ cmake --build build -j8
 build\real-esrguisoft.exe
 ```
 
-打包可独立运行的 zip（**唯一入口**：工作区同级的 `cxx_pkg` 项目，0.3+）：
+打包可独立运行的 zip（**唯一入口**：工作区同级的 `cxx_pkg` 项目，0.3+，TOML 配置）：
 
 ```powershell
-# 项目根目录；cxx_pkg 路径按本机实际位置调整
-python C:\Users\yxl\Desktop\code\cxx_pkg\cxx_pkg.py -c cxx_pkg.ini --check-config
-python C:\Users\yxl\Desktop\code\cxx_pkg\cxx_pkg.py -c cxx_pkg.ini --dry-run
-python C:\Users\yxl\Desktop\code\cxx_pkg\cxx_pkg.py -c cxx_pkg.ini    # 构建+部署+打包
+# 项目根目录；cxx_pkg 路径按本机实际位置调整（未安装时用 PYTHONPATH 指向 cxx_pkg/src）
+$env:PYTHONPATH = 'C:\Users\yxl\Desktop\code\cxx_pkg\src'
+python -m cxx_pkg -c cxx_pkg.toml --check-config
+python -m cxx_pkg -c cxx_pkg.toml --dry-run
+python -m cxx_pkg -c cxx_pkg.toml    # 构建+部署+打包
 ```
 
 产物：`dist/real-esrguisoft-<version>-win64.zip`（自包含：Qt/FFmpeg/第三方 DLL
@@ -245,7 +246,7 @@ build\tests\resr_pipeline_verify.exe --out build\verify
 （详见 [docs/ci.md](docs/ci.md)）。
 
 仓库根提供 `./check.sh`（POSIX 薄壳，`all|ci|style|audit`）统一入口；也可直接跑
-`cxx_ci/check.py` 与 `cpp_audit`：
+`cxx_ci/check.py` 与 `cxx_audit`：
 
 ```bash
 # Linux / WSL：在仓库根执行
@@ -256,17 +257,17 @@ build\tests\resr_pipeline_verify.exe --out build\verify
 ```
 
 ```powershell
-# Windows PowerShell（无 check.sh；直接用 cxx_ci/check.py 与 cpp_audit）
+# Windows PowerShell（无 check.sh；直接用 cxx_ci/check.py 与 cxx_audit）
 python ..\cxx_ci\check.py ci --root .
 python ..\cxx_ci\check.py style --root .
-$env:PYTHONPATH = '..\cxx_audit\src'; python -m cpp_audit -c audit.toml all
+$env:PYTHONPATH = '..\cxx_audit\src'; python -m cxx_audit -c audit.toml all
 ```
 
 门禁含义、Windows/Linux 差异与降级、失败处理、Linux/WSL 补跑 tidy/cpd/asan/valgrind
 的方法，统一见 **[docs/ci.md](docs/ci.md)**。
 
 排版约定在根 `.clang-format`（Tab 缩进、Allman、80 列等，从现有源码反推）。全仓已完成
-一次格式化收口；日常改动后跑 `standardize.py --check`，有 diff 时先看
+一次格式化收口；日常改动后跑 `cxx_ci/check.py style --root .`，有 diff 时先看
 `build/standardize/standardize.diff`，确认只是排版再 `--apply`。
 
 ## 使用说明
@@ -549,7 +550,7 @@ CRF（Constant Rate Factor）控制视频质量，范围 0-51：
   ACP）；Linux 非 ASCII 用例与 2026-11-15 Windows 真机全链路实测均通过。
   （本机若从仓库目录内启动 exe 会受“受限令牌”环境策略限制，见下方条目。）
 - **动态链接 FFmpeg**：开发构建依赖 MSYS2 的 FFmpeg DLL；分发请用 `cxx_pkg`
-  （`cxx_pkg.ini`，PE 依赖闭包会自动补齐第三方 DLL），或按
+  （`cxx_pkg.toml`，PE 依赖闭包会自动补齐第三方 DLL），或按
   `third_party/ffmpeg/build-ffmpeg.*` 构建静态库。
 - **视频拆帧占磁盘**：1080p 长视频拆帧可占数 GB 临时空间（与旧 Python 方案同量级）；
   无断点续传，中断后临时目录由任务清理逻辑回收。

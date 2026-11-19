@@ -1,13 +1,13 @@
 # cxx_audit 配置 —— stacklog
 #
 # 在仓库根目录运行：
-#     PYTHONPATH=../cxx_audit/src python3 -m cpp_audit -c audit.toml all
+#     cxx-audit -c audit.toml all
 #
 # 单项：
-#     ... cpp_audit -c audit.toml tidy
-#     ... cpp_audit -c audit.toml cpd
-#     ... cpp_audit -c audit.toml valgrind
-#     ... cpp_audit -c audit.toml build --kind asan
+#     cxx-audit -c audit.toml tidy
+#     cxx-audit -c audit.toml cpd
+#     cxx-audit -c audit.toml valgrind
+#     cxx-audit -c audit.toml build --kind asan
 [project]
 name = "stacklog"
 root = "."
@@ -34,12 +34,7 @@ dirs = ["src", "include"]
 min_tokens = 70
 
 [asan]
-# 默认启用（ASan 是默认内存检查门禁）。2026-11-17 在普通 Linux（Ubuntu 24.04
-# x86_64 / GCC 15.2）上以 -fsanitize=address 构建并跑通 12 个 unit/integration/
-# smoke 测试。当前 honor 的 PRoot 容器因 shadow 映射限制无法初始化
-# （sanitizer_allocator_primary64.h 的 CHECK 失败，见 reports/asan.txt），属特殊
-# 环境，不是代码问题；仅在该受限容器临时验证时可改 false 并在结果中注明，不要
-# 提交为默认值。Windows 上本项按平台跳过。
+# ASan 默认启用；受限容器无法初始化时可临时关闭，Windows 上按平台跳过。
 enabled = true
 build_dir = "build/asan"
 compiler = "clang++"

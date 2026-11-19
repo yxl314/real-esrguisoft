@@ -1,22 +1,22 @@
+#include <iostream>
 #include <singleproc/singleproc.hpp>
 
-#include <iostream>
-
-int main()
+int
+main()
 {
-    singleproc::Guard guard("com.example.singleproc.example");
+  singleproc::guard guard("com.example.singleproc.example");
 
-    if (guard.state() == singleproc::Guard::State::AlreadyRunning)
+  if (guard.state() == singleproc::guard::status::already_running)
     {
-        std::cout << "already running\n";
-        return 0;
+      std::cout << "already running\n";
+      return 0;
     }
-    if (guard.state() == singleproc::Guard::State::Error)
+  if (guard.state() == singleproc::guard::status::error)
     {
-        std::cerr << "singleproc error: " << guard.error_code() << '\n';
-        return 1;
+      std::cerr << "singleproc error: " << guard.error_code() << '\n';
+      return 1;
     }
 
-    std::cout << "primary instance\n";
-    return 0;
+  std::cout << "primary instance\n";
+  return 0;
 }

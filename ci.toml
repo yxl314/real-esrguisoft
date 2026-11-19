@@ -27,7 +27,7 @@ build_dir = "build/ci"
 configure_args = [
     "-G", "Ninja",
     "-DCMAKE_BUILD_TYPE=Release",
-    # 供 IDE / clang-tidy 复用（cpp_audit 的 tidy 检查可指向 build/ci 的编译数据库）。
+    # 供 IDE / clang-tidy 复用（cxx_audit 的 tidy 检查可指向 build/ci 的编译数据库）。
     "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON",
 ]
 # CMake 的并行度由 --jobs 以 `cmake --build . --parallel N` 传入，这里不写 -jN。

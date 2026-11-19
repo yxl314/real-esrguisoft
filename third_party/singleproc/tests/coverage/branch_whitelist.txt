@@ -7,3 +7,5 @@
 #
 # 当前为空：Linux 单元测试使用 tests/support/fake_platform.cpp，公开接口
 # 与公开函数内的非异常分支均达到 100%。
+
+src/singleproc.cpp:77  # new impl() 分配失败无法由假平台注入，属于资源耗尽分支

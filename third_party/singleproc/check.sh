@@ -87,17 +87,18 @@ coverage_stage() {
 
 case "$STAGE" in
     all)
-        run python3 ../cxx_ci/check.py all --root "$ROOT" --jobs "$JOBS"
-        run env PYTHONPATH=../cxx_audit/src python3 -m cpp_audit -c audit.toml --jobs "$JOBS" all
+        run cxx-ci -c ci.toml
+        run cxx-standardize -c standardize.toml --check
+        run cxx-audit -c audit.toml --jobs "$JOBS" all
         ;;
     ci)
-        run python3 ../cxx_ci/check.py ci --root "$ROOT" --jobs "$JOBS"
+        run cxx-ci -c ci.toml
         ;;
     style)
-        run python3 ../cxx_ci/check.py style --root "$ROOT" --jobs "$JOBS"
+        run cxx-standardize -c standardize.toml --check
         ;;
     audit)
-        run env PYTHONPATH=../cxx_audit/src python3 -m cpp_audit -c audit.toml --jobs "$JOBS" all
+        run cxx-audit -c audit.toml --jobs "$JOBS" all
         ;;
     coverage)
         coverage_stage

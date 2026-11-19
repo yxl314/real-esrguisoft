@@ -7,19 +7,22 @@
 <工作区>/
 ├── real-esrguisoft/        # 本仓库（所有门禁命令都在仓库根执行）
 ├── cxx_ci/                 # 构建/测试流水线 ci + 排版 standardize
-└── cxx_audit/              # 静态检查 cpp_audit（Python 包名 cpp_audit）
+├── cxx_audit/              # 静态检查 cxx_audit（Python 包 cxx_audit，CLI cxx-audit）
+└── cxx_pkg/                # Windows 打包（TOML 配置 cxx_pkg.toml）
 ```
 
 需要的运行时：
 
 | 工具 | 入口 | Python | 主要外部依赖 |
 | --- | --- | --- | --- |
-| cxx_ci/ci | `../cxx_ci/check.py ci --root .`（配置由 `ci.toml` 承载） | 3.4+ | cmake、ninja、ctest、编译器（Qt/FFmpeg 见构建文档） |
-| cxx_ci/standardize | `../cxx_ci/check.py style --root .`（配置由 `standardize.toml` 承载） | 3.4+ | clang-format（Windows 需自行安装，见 §5） |
-| cxx_audit | `../cxx_audit/src` 的 `cpp_audit` 模块 | 3.11+ | compat 无依赖；tidy/cpd/asan/valgrind 各需对应工具（见 §6） |
+| cxx_ci/ci | `../cxx_ci/check.py ci --root .`（配置由 `ci.toml` 承载） | 3.8+ | cmake、ninja、ctest、编译器（Qt/FFmpeg 见构建文档） |
+| cxx_ci/standardize | `../cxx_ci/check.py style --root .`（配置由 `standardize.toml` 承载） | 3.8+ | clang-format（Windows 需自行安装，见 §5） |
+| cxx_audit | `../cxx_audit/src` 的 `cxx_audit` 包（CLI `cxx-audit`） | 3.11+ | compat 无依赖；tidy/cpd/asan/valgrind 各需对应工具（见 §6） |
+| cxx_pkg | `../cxx_pkg/src` 的 `cxx_pkg` 包（CLI `cxx-pkg`） | 3.8+ | Windows 打包需要 zip/windeployqt；Linux 上 `--check-config`/`--dry-run` 可用（见 §6.5） |
 
 三份配置都在仓库根：`ci.toml`、`standardize.toml`、`audit.toml`；排版规则在
-`.clang-format`，tidy 规则在 `.clang-tidy`。所有路径都相对**仓库根**解析，命令也
+`.clang-format`，tidy 检查集由 `audit.toml` 的 `[tidy.groups]` 生成（`.clang-tidy`
+仅供 IDE/手动使用）。所有路径都相对**仓库根**解析，命令也
 一律在仓库根执行——不要在 `src/` 或构建目录里跑这些命令。
 
 ---
@@ -40,7 +43,7 @@ python ..\cxx_ci\check.py style --root .
 
 # 3) 静态检查（本机可跑的部分：compat）
 $env:PYTHONPATH = '..\cxx_audit\src'
-python -m cpp_audit -c audit.toml all
+python -m cxx_audit -c audit.toml all
 ```
 
 ### 1.2 Linux（本机开发/评审环境）
@@ -53,7 +56,7 @@ python3 ../cxx_ci/check.py ci --root .
 python3 ../cxx_ci/check.py style --root .
 
 # 3) 静态检查
-PYTHONPATH=../cxx_audit/src python3 -m cpp_audit -c audit.toml all
+PYTHONPATH=../cxx_audit/src python3 -m cxx_audit -c audit.toml all
 ```
 
 `cxx_ci` 与 `cxx_audit` 都支持只校验、不产生副作用的预检（推荐先跑）：
@@ -61,8 +64,8 @@ PYTHONPATH=../cxx_audit/src python3 -m cpp_audit -c audit.toml all
 ```bash
 PYTHONPATH=../cxx_ci/src python3 -m cxx_ci.ci_tool -c ci.toml --check-config   # 配置/路径/工具
 PYTHONPATH=../cxx_ci/src python3 -m cxx_ci.ci_tool -c ci.toml --dry-run        # 打印执行计划
-PYTHONPATH=../cxx_audit/src python3 -m cpp_audit -c audit.toml check-config
-PYTHONPATH=../cxx_audit/src python3 -m cpp_audit -c audit.toml --dry-run all
+PYTHONPATH=../cxx_audit/src python3 -m cxx_audit -c audit.toml --check-config
+PYTHONPATH=../cxx_audit/src python3 -m cxx_audit -c audit.toml --dry-run all
 ```
 
 > Linux 上同一条命令也会跑通 `test` 阶段：`resr_tests` 中依赖 Windows 版
@@ -193,12 +196,12 @@ PYTHONPATH=../cxx_ci/src python3 -m cxx_ci.standardize_tool --apply
 
 ## 4. `audit.toml` + `.clang-tidy`：静态检查
 
-`cpp_audit` 的检查项与当前状态（详见 `audit.toml` 内逐项注释）：
+`cxx_audit` 的检查项与当前状态（详见 `audit.toml` 内逐项注释）：
 
 | 检查 | 本仓库状态 | 含义 | Windows 不可用原因 |
 | --- | --- | --- | --- |
 | `compat` | ✅ 启用 | 文本级兼容性规则（本项目保留 `variadic_template` 作回归护栏） | — |
-| `tidy` | ⛔ `enabled=false` | clang-tidy 检查（规则在根 `.clang-tidy`） | MSYS2 UCRT64 默认不带 clang-tidy |
+| `tidy` | ⛔ `enabled=false` | clang-tidy 检查（检查集由 `[tidy.groups]` 组开关生成，不读 `.clang-tidy`） | MSYS2 UCRT64 默认不带 clang-tidy |
 | `cpd` | ⛔ `enabled=false` | PMD CPD 重复代码检查 | 需要 npm/Java 工具链 |
 | `asan` | ⛔ `enabled=false` | AddressSanitizer Debug 构建 + 运行 | MSYS2 GCC libasan 与 Qt/FFmpeg DLL 混用不稳定 |
 | `valgrind` | ⛔ `enabled=false` | Valgrind Memcheck/Helgrind 运行 | Windows 没有 valgrind |
@@ -222,7 +225,7 @@ src/model/videoprocessservice.cpp:652/653    std::atomic<bool> 成员
 失败处理：
 
 - 退出码 `2`：配置/路径/工具问题（例如 `sources` 路径不存在、显式跑 tidy 时
-  缺 `.clang-tidy`）。先跑 `check-config` 看预检信息。
+  缺 clang-tidy 或 `[tidy.groups]` 未配置）。先跑 `--check-config` 看预检信息。
 - 退出码 `1`：确有检查失败。报告在 `build/audit/reports/`：
   `summary.txt` / `summary.json` 是汇总，`compat.txt`、`clang-tidy.txt`、
   `cpd.txt`、`asan.txt`、`valgrind.txt` 是各检查正文（启用哪项就有哪个文件）。
@@ -237,11 +240,11 @@ src/model/videoprocessservice.cpp:652/653    std::atomic<bool> 成员
 | `ci_tool` clean/configure/build | 支持（Ninja + UCRT64） | 支持（系统 Qt6/FFmpeg） | — |
 | `ci_tool` test | 全部用例可跑（`resr_tests` + `resr_media_tests`） | 跑通；`resr_tests` 中 4 条依赖 Windows 引擎的链路用例 `QSKIP` 并注明原因，其余通过 | 只跑媒体层：`ctest -R resr_media_tests` |
 | `standardize_tool` | 需自行安装 clang-format（见下） | 系统 clang-format 即可 | MSYS2：`pacman -S mingw-w64-ucrt-x86_64-clang`（clang-format 随 clang 包提供；若包名随镜像不同，用 `pacman -F clang-format` 查） |
-| `cpp_audit compat` | 支持（纯 Python 文本扫描） | 支持 | — |
-| `cpp_audit tidy` | 默认关闭；装 `clang-tools-extra` 后可显式跑 | 可用 | 见 §6.1 |
-| `cpp_audit cpd` | 默认关闭（缺 PMD） | 可用（需 `pmd-bin`） | 见 §6.2 |
-| `cpp_audit asan` | 默认关闭 | 可用（需 clang++ + libasan） | 见 §6.3 |
-| `cpp_audit valgrind` | 不可用（工具不存在） | 可用 | 见 §6.4 |
+| `cxx_audit compat` | 支持（纯 Python 文本扫描） | 支持 | — |
+| `cxx_audit tidy` | 默认关闭；装 `clang-tools-extra` 后可显式跑 | 可用 | 见 §6.1 |
+| `cxx_audit cpd` | 默认关闭（缺 PMD） | 可用（需 `pmd-bin`） | 见 §6.2 |
+| `cxx_audit asan` | 默认关闭 | 可用（需 clang++ + libasan） | 见 §6.3 |
+| `cxx_audit valgrind` | 不可用（工具不存在） | 可用 | 见 §6.4 |
 
 **降级原则**：Windows 门禁只跑“本机确实能跑真结果”的检查，缺工具的检查显式
 `enabled=false` 并注明原因，而不是留在 `all` 里靠 `SKIPPED` 蒙混——这样门禁
@@ -258,7 +261,7 @@ src/model/videoprocessservice.cpp:652/653    std::atomic<bool> 成员
 ### 6.1 clang-tidy
 
 ```bash
-PYTHONPATH=../cxx_audit/src python3 -m cpp_audit -c audit.toml tidy
+PYTHONPATH=../cxx_audit/src python3 -m cxx_audit -c audit.toml tidy
 ```
 
 - 需要：`clang-tidy`（Ubuntu：`sudo apt install clang-tidy`；MSYS2：
@@ -266,8 +269,10 @@ PYTHONPATH=../cxx_audit/src python3 -m cpp_audit -c audit.toml tidy
   `pacman -F clang-tidy` 查）。
 - 首次运行会在 `build/audit/` 自动生成 `compile_commands.json`（CMake 项目，
   工具自动跑 configure，不会完整编译）。
-- 规则来自根 `.clang-tidy`（`bugprone-*` + `performance-*`，`HeaderFilterRegex`
-  只诊断 `src/`）。报告：`build/audit/reports/clang-tidy.txt`。
+- 检查集由 `audit.toml` 的 `[tidy.groups]` 组开关生成（当前启用 `common_bugs` +
+  `performance`，与原 `.clang-tidy` 取向对齐）；`HeaderFilterRegex` 由
+  `project.sources` 推导，`SystemHeaders` 固定为 false，不再读取根 `.clang-tidy`。
+  报告：`build/audit/reports/clang-tidy.txt`。
 - 已在 Linux 实测可跑（clang-tidy 21）：直接按默认路径跑会报 1 个 error 与
   数十条 warning。error 来自 `src/model/videoprocessservice.cpp` 的
   `#include "videoprocessservice.moc"`——它是 CMake AUTOMOC 的构建产物，
@@ -288,7 +293,7 @@ PYTHONPATH=../cxx_audit/src python3 -m cpp_audit -c audit.toml tidy
 
 ```bash
 # 需要 pmd（npm install -g --allow-scripts=pmd-bin pmd-bin，或发行版的 pmd 包）
-PYTHONPATH=../cxx_audit/src python3 -m cpp_audit -c audit.toml cpd
+PYTHONPATH=../cxx_audit/src python3 -m cxx_audit -c audit.toml cpd
 ```
 
 - 报告：`build/audit/reports/cpd.txt`。当前 `min_tokens` 为默认 70，UI 面板
@@ -310,7 +315,7 @@ build_dir = "build/asan"
 然后：
 
 ```bash
-PYTHONPATH=../cxx_audit/src python3 -m cpp_audit -c audit.toml asan
+PYTHONPATH=../cxx_audit/src python3 -m cxx_audit -c audit.toml asan
 ```
 
 - 需要：clang++、libasan（Ubuntu：`sudo apt install clang libasan...` 或直接用
@@ -322,7 +327,7 @@ PYTHONPATH=../cxx_audit/src python3 -m cpp_audit -c audit.toml asan
 ### 6.4 Valgrind
 
 ```bash
-PYTHONPATH=../cxx_audit/src python3 -m cpp_audit -c audit.toml valgrind
+PYTHONPATH=../cxx_audit/src python3 -m cxx_audit -c audit.toml valgrind
 ```
 
 - 与 asan 同理，建议临时把 `[valgrind].targets` 指向测试可执行文件
@@ -330,24 +335,25 @@ PYTHONPATH=../cxx_audit/src python3 -m cpp_audit -c audit.toml valgrind
 - 报告：`build/audit/reports/valgrind.txt`。数据竞争用
   `[valgrind] tool = "helgrind"`（或 `"drd"`）。
 - WSL2 上直接 `valgrind ./build/ci/tests/resr_media_tests` 也可以，不经过
-  `cpp_audit`；但 `cpp_audit` 会统一汇总报告，推荐前者。
+  `cxx_audit`；但 `cxx_audit` 会统一汇总报告，推荐前者。
 
 ---
 
 ## 6.5 Windows 打包（cxx_pkg 唯一入口）
 
-打包统一由工作区同级的 **cxx_pkg**（0.3+，Windows/MSYS2 能力）完成，项目内不再维护
-自写打包脚本（原 `tools/deploy.ps1` 已删除）。项目根目录的 `cxx_pkg.ini` 描述参数：
-CMake 构建目录 `build-win`、target `real-esrguisoft`、`zip` 格式、`dist` 输出、附加
-载荷 `bin/realesrgan`（引擎 exe + models）与 README/LICENSE、Qt 前缀
-`C:/msys64/ucrt64`。
+打包统一由工作区同级的 **cxx_pkg**（0.3+，TOML 配置 `cxx_pkg.toml`，
+Windows/MSYS2 能力）完成，项目内不再维护自写打包脚本（原 `tools/deploy.ps1` 已
+删除）。项目根目录的 `cxx_pkg.toml` 描述参数：CMake 构建目录 `build-win`、target
+`real-esrguisoft`、`zip` 格式、`dist` 输出、附加载荷 `bin/realesrgan`（引擎 exe +
+models）与 README/LICENSE；`install = false` 跳过安装直接收构建产物；Qt 前缀不写死，
+由 PATH 中的 qmake/windeployqt 定位。
 
 ```bash
-# Windows MSYS2 UCRT64，项目根目录；cxx_pkg 路径按本机实际位置调整
-python C:/Users/yxl/Desktop/code/cxx_pkg/cxx_pkg.py -c cxx_pkg.ini --check-config
-python C:/Users/yxl/Desktop/code/cxx_pkg/cxx_pkg.py -c cxx_pkg.ini --dry-run
-python C:/Users/yxl/Desktop/code/cxx_pkg/cxx_pkg.py -c cxx_pkg.ini --list
-python C:/Users/yxl/Desktop/code/cxx_pkg/cxx_pkg.py -c cxx_pkg.ini
+# Windows MSYS2 UCRT64，项目根目录；cxx_pkg 未安装时用 PYTHONPATH 指向 cxx_pkg/src
+python -m cxx_pkg -c cxx_pkg.toml --check-config
+python -m cxx_pkg -c cxx_pkg.toml --dry-run
+python -m cxx_pkg -c cxx_pkg.toml --list
+python -m cxx_pkg -c cxx_pkg.toml
 ```
 
 - 产物：`dist/real-esrguisoft-<version>-win64.zip` + `SHA256SUMS`（`dist/` 已被
@@ -384,16 +390,16 @@ python C:/Users/yxl/Desktop/code/cxx_pkg/cxx_pkg.py -c cxx_pkg.ini
 5. **2026-11-17 复核（内嵌库更新后）**：Linux/x86_64 开发机（Qt 6.10.2、FFmpeg 8、
    CMake 4.2、Ninja 1.13、GCC 15）上 `check.py ci` 全绿：configure/build/test 通过，
    ctest 3/3（`resr_tests` 内 4 条依赖 Windows 引擎的链路用例 `QSKIP`、其余通过）；
-   `cpp_audit all` 0 命中。`check.py style` 用默认 clang-format 22.1.2 时在 4 个
+   `cxx_audit all` 0 命中。`check.py style` 用默认 clang-format 22.1.2 时在 4 个
    **未改动基线文件**上报 diff，按第 4 条换成建议的 clang-format 21.1.8 后
    `changed: 0`。cxx_pkg 的 `--check-config`/`--dry-run` 在 Linux 上通过（退出 0，
-   只校验/打印计划，未产物）；因为 `cxx_pkg.ini` 不再写死 `qt.prefix`，改由 PATH 中的
+   只校验/打印计划，未产物）；因为 `cxx_pkg.toml` 不再写死 `qt.prefix`，改由 PATH 中的
    `qmake -query` 定位 Qt，兼容 `C:/msys2`、`C:/msys64` 两种 MSYS2 安装布局。
 6. **2026-11-17 Windows 复核**（测试机 MSYS2 UCRT64：Qt 6.12.0、GCC 16.2、
    CMake 4.5.0、Ninja 1.13.2、FFmpeg 9.0 dev）：`check.py ci` 全绿
    （clean/configure/build/test，106s；ctest 3/3 通过，`-LE engine` 排除真实 GPU
    引擎用例）。构建仅 `src/infrastructure/exerunner.cpp` 2 条既有
-   `-Wcast-function-type` 警告（FARPROC 强转，非内嵌库改动引入）；`cpp_audit all`
+   `-Wcast-function-type` 警告（FARPROC 强转，非内嵌库改动引入）；`cxx_audit all`
    0 命中；`cxx_pkg --check-config`/`--dry-run` 通过（prefix 不再写死后由
    `qmake -query` 自动定位 Qt）。**真实打包成功**：`cxx_pkg` 全流程产出
    `dist/real-esrguisoft-1.0.0-win64.zip` + `SHA256SUMS`（PE 导入闭包从
@@ -408,6 +414,17 @@ python C:/Users/yxl/Desktop/code/cxx_pkg/cxx_pkg.py -c cxx_pkg.ini
    语义不变，仅修 Windows 句柄顺序。
    `check.py style` 未跑：MSYS2 环境未装 clang-format（见第 4 条）。
 
+7. **2026-11-19 工具链适配**：内嵌 `third_party/stacklog` 同步到 8fd01bc、
+   `third_party/singleproc` 同步到 d2618d2（上游已删除各自 `docs/`，内嵌副本随
+   全量同步移除；旧副本与上游删除前内容逐字节一致，无本地改动丢失）；`main.cpp`
+   适配 singleproc 新 API（`singleproc::guard` / `guard::status`）。配置侧：
+   `cxx_pkg.ini` 迁移为 TOML `cxx_pkg.toml`（`build.install = false`、
+   `package.files/dirs`、`qt.enabled`），`CMakeLists.txt` 的版本一致性检查改为
+   读取 TOML；`check.sh`、`audit.toml`、`.clang-tidy`、`ci.toml` 注释改用
+   `cxx_audit` 包与 `--check-config` 形式；`audit.toml` 增加 `[tidy.groups]`
+   （`common_bugs` + `performance`）。本地 Linux 验证结果见提交说明（ci 全绿、
+   audit/cxx_pkg 预检通过；style 的 4 个基线 diff 仍属 clang-format 版本差）。
+
 ---
 
 ## 8. 退出码速查
@@ -416,4 +433,4 @@ python C:/Users/yxl/Desktop/code/cxx_pkg/cxx_pkg.py -c cxx_pkg.ini
 | --- | --- | --- | --- | --- |
 | `ci_tool` | 全部阶段成功 | 某阶段失败（configure/build/test 未通过） | 配置/用法错误、工具缺失 | 用户中断 |
 | `standardize_tool` | 无需修改（非 `--check` 时生成 diff 也返回 0） | `--check` 模式存在 diff | 工具/配置/文件处理失败 | 用户中断 |
-| `cpp_audit` | 检查通过（含 SKIPPED） | 检查执行完成但有失败项 | 配置/用法错误（或 `build` 子命令构建失败） | 用户中断 |
+| `cxx_audit` | 检查通过（含 SKIPPED） | 检查执行完成但有失败项 | 配置/用法错误（或 `build` 子命令构建失败） | 用户中断 |

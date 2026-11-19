@@ -1,54 +1,40 @@
+# C++ standard-library style.
+# Lowercase snake_case names, 2-space indent, Allman braces, 80 columns.
 ---
 Language: Cpp
-BasedOnStyle: LLVM
+BasedOnStyle: GNU
 Standard: c++11
-
-# 4 空格缩进，禁用 Tab，120 列上限。
-IndentWidth: 4
-TabWidth: 4
+IndentWidth: 2
+TabWidth: 2
 UseTab: Never
-ColumnLimit: 120
-
-# Allman 大括号；空函数体允许保持单行。
-BreakBeforeBraces: Allman
-AllowShortFunctionsOnASingleLine: Empty
+ColumnLimit: 80
+AccessModifierOffset: -2
+BreakBeforeBraces: GNU
+AllowShortFunctionsOnASingleLine: None
 AllowShortBlocksOnASingleLine: Never
 AllowShortIfStatementsOnASingleLine: Never
 AllowShortLoopsOnASingleLine: false
 AllowShortCaseLabelsOnASingleLine: false
-AllowShortLambdasOnASingleLine: Empty
-
-# 类型名、函数名和变量名遵循标准库风格；私有成员使用尾随下划线。
-AccessModifierOffset: -4
+AllowShortEnumsOnASingleLine: false
 PointerAlignment: Left
 ReferenceAlignment: Pointer
 DerivePointerAlignment: false
-NamespaceIndentation: None
-
-# 不自动重排 include，避免破坏“项目头文件在前、系统头文件在后”的分组。
-SortIncludes: Never
-IncludeBlocks: Preserve
-
-# 参数和实参超长时逐行排列，不做列对齐。
 AlignAfterOpenBracket: Align
 BinPackArguments: false
 BinPackParameters: false
-AlignConsecutiveDeclarations: false
 AlignConsecutiveAssignments: false
+AlignConsecutiveDeclarations: false
 AlignTrailingComments: false
-SpacesBeforeTrailingComments: 1
-
-# 注释保持原样；最多保留一个连续空行。
-ReflowComments: false
-MaxEmptyLinesToKeep: 1
 IndentCaseLabels: false
 IndentPPDirectives: None
-
-SpaceBeforeParens: ControlStatements
-SpaceBeforeCtorInitializerColon: false
-BreakConstructorInitializers: BeforeColon
-ConstructorInitializerIndentWidth: 4
-Cpp11BracedListStyle: true
+NamespaceIndentation: None
+SortIncludes: CaseSensitive
+IncludeBlocks: Regroup
+ReflowComments: false
+MaxEmptyLinesToKeep: 1
 FixNamespaceComments: true
-EmptyLineBeforeAccessModifier: Leave
-KeepEmptyLinesAtTheStartOfBlocks: true
+SpaceBeforeParens: ControlStatements
+SpacesInAngles: false
+BreakConstructorInitializers: BeforeColon
+ConstructorInitializerIndentWidth: 2
+SpaceBeforeInheritanceColon: true

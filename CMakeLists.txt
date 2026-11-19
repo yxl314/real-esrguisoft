@@ -5,19 +5,20 @@ project(real-esrguisoft
     DESCRIPTION "Real-ESRGAN 媒体超分处理工具（纯 C++/Qt6）"
     LANGUAGES CXX)
 
-# 打包配置一致性（静态审查 C3）：cxx_pkg.ini 的 [project].version 必须与
+# 打包配置一致性（静态审查 C3）：cxx_pkg.toml 的 [project].version 必须与
 # project(VERSION) 一致，避免 zip 名/关于页/CMake 版本三处漂移。打包机与本地
 # 配置阶段都会检查；不需要额外脚本/过度设计。
-set(RESR_CXX_PKG_INI "${CMAKE_CURRENT_SOURCE_DIR}/cxx_pkg.ini")
-if(EXISTS "${RESR_CXX_PKG_INI}")
-    file(STRINGS "${RESR_CXX_PKG_INI}" _resr_pkg_version_lines REGEX "^version[ ]*=")
+set(RESR_CXX_PKG_TOML "${CMAKE_CURRENT_SOURCE_DIR}/cxx_pkg.toml")
+if(EXISTS "${RESR_CXX_PKG_TOML}")
+    file(STRINGS "${RESR_CXX_PKG_TOML}" _resr_pkg_version_lines REGEX "^[ ]*version[ ]*=")
     if(_resr_pkg_version_lines)
         list(GET _resr_pkg_version_lines 0 _resr_pkg_version_line)
         string(REGEX REPLACE "^[^=]*=[ ]*" "" _resr_pkg_version "${_resr_pkg_version_line}")
+        string(REGEX REPLACE "^\"(.*)\"$" "\\1" _resr_pkg_version "${_resr_pkg_version}")
         string(STRIP "${_resr_pkg_version}" _resr_pkg_version)
         if(NOT "${_resr_pkg_version}" STREQUAL "${PROJECT_VERSION}")
             message(FATAL_ERROR
-                "cxx_pkg.ini 的 version (${_resr_pkg_version}) 与 CMake project VERSION "
+                "cxx_pkg.toml 的 [project].version (${_resr_pkg_version}) 与 CMake project VERSION "
                 "(${PROJECT_VERSION}) 不一致；请同步两处（静态审查 C3）")
         endif()
     endif()

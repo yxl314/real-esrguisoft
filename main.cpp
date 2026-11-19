@@ -53,17 +53,17 @@ main(int argc, char *argv[])
 	LanguageManager::instance().initialize();
 
 	// 单实例判定放在 QApplication 构造之后、界面构造之前。
-	singleproc::Guard guard(kInstanceKey);
-	std::unique_ptr<singleproc::Guard> fallback_guard;
-	if (guard.state() == singleproc::Guard::State::Error)
+	singleproc::guard instance_guard(kInstanceKey);
+	std::unique_ptr<singleproc::guard> fallback_guard;
+	if (instance_guard.state() == singleproc::guard::status::error)
 	{
-		fallback_guard.reset(new singleproc::Guard(
+		fallback_guard.reset(new singleproc::guard(
 			kInstanceKey, fallback_runtime_dir().toStdString()));
 	}
-	singleproc::Guard *active_guard
-		= fallback_guard ? fallback_guard.get() : &guard;
+	singleproc::guard *active_guard
+		= fallback_guard ? fallback_guard.get() : &instance_guard;
 
-	if (active_guard->state() == singleproc::Guard::State::Error)
+	if (active_guard->state() == singleproc::guard::status::error)
 	{
 		LOG_ERROR(QStringLiteral("Single instance check failed (error code %1)")
 					  .arg(active_guard->error_code()));
@@ -71,7 +71,7 @@ main(int argc, char *argv[])
 	}
 	if (!active_guard->is_primary())
 	{
-		// 二次实例：门铃已在 Guard 构造时发出，这里只记录并退出。
+		// 二次实例：门铃已在 guard 构造时发出，这里只记录并退出。
 		LOG_INFO(QStringLiteral(
 			"Another instance is already running, notified it and exiting"));
 		return 0;

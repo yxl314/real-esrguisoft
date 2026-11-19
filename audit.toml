@@ -1,11 +1,11 @@
-# audit 配置：real-esrguisoft 的静态检查门禁（cxx_audit / cpp_audit）
+# audit 配置：real-esrguisoft 的静态检查门禁（cxx_audit）
 #
 # 用法（在本仓库根目录执行）：
 #   Linux/WSL:
-#     PYTHONPATH=../cxx_audit/src python3 -m cpp_audit -c audit.toml check-config
-#     PYTHONPATH=../cxx_audit/src python3 -m cpp_audit -c audit.toml all
+#     PYTHONPATH=../cxx_audit/src python3 -m cxx_audit -c audit.toml --check-config
+#     PYTHONPATH=../cxx_audit/src python3 -m cxx_audit -c audit.toml all
 #   Windows PowerShell:
-#     $env:PYTHONPATH = '..\cxx_audit\src'; python -m cpp_audit -c audit.toml all
+#     $env:PYTHONPATH = '..\cxx_audit\src'; python -m cxx_audit -c audit.toml all
 #
 # 本仓库当前只启用 compat（纯文本扫描、无外部依赖，Windows 与 Linux 结果一致）。
 # tidy / cpd / asan / valgrind 需要的外部工具在 Windows/MSYS2 UCRT64 上要么没装、
@@ -46,8 +46,14 @@ dir = "build/audit/reports"
 [tidy]
 # 关闭原因：clang-tidy 在 Windows/MSYS2 UCRT64 上不是默认安装项，需要额外
 # pacman 包；Windows 上保持门禁轻量。Linux/WSL 上可用显式子命令补跑（见 docs/ci.md）。
-# 若在 Linux 上把它改成 enabled = true，需要仓库根存在 .clang-tidy（已提供）。
+# cxx_audit 的 tidy 检查集由下面 [tidy.groups] 的组开关生成，不读取根 .clang-tidy；
+# 显式运行时至少打开一个组，未列出的组默认关闭。
 enabled = false
+
+[tidy.groups]
+# 与原 .clang-tidy（bugprone-* + performance-*）取向对齐。
+common_bugs = true
+performance = true
 
 [cpd]
 # 关闭原因：Windows 上没有 PMD CPD（需要 npm/Java 工具链）；且 UI 面板代码

@@ -44,7 +44,7 @@ merge()
 
 run_ci() { python3 ../cxx_ci/check.py ci --root . --jobs "$JOBS"; }
 run_style() { python3 ../cxx_ci/check.py style --root . --jobs "$JOBS"; }
-run_audit() { PYTHONPATH=../cxx_audit/src python3 -m cpp_audit -c audit.toml all; }
+run_audit() { PYTHONPATH=../cxx_audit/src python3 -m cxx_audit -c audit.toml all; }
 
 case "$STAGE" in
 	ci)

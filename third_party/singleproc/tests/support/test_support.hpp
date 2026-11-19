@@ -13,72 +13,86 @@
 namespace test_support
 {
 
-inline int& failure_count()
+inline int&
+failure_count()
 {
-    static int count = 0;
-    return count;
+  static int count = 0;
+  return count;
 }
 
-inline void check(bool condition, const char* expression, const char* file, int line)
+inline void
+check(bool condition, const char* expression, const char* file, int line)
 {
-    if (!condition)
+  if (!condition)
     {
-        (void)std::fprintf(stderr, "FAIL %s:%d: %s\n", file, line, expression);
-        ++failure_count();
+      (void)std::fprintf(stderr, "FAIL %s:%d: %s\n", file, line, expression);
+      ++failure_count();
     }
 }
 
-inline std::string make_temp_dir()
+inline std::string
+make_temp_dir()
 {
-    char pattern[] = "/tmp/singleproc-test-XXXXXX";
-    char* path = ::mkdtemp(pattern);
-    if (path == nullptr)
+  char pattern[] = "/tmp/singleproc-test-XXXXXX";
+  char* path = ::mkdtemp(pattern);
+  if (path == nullptr)
     {
-        return {};
+      return {};
     }
-    return {path};
+  return { path };
 }
 
-inline std::string lock_path(const std::string& directory, const std::string& key)
+inline std::string
+lock_path(const std::string& directory, const std::string& key)
 {
-    return directory + "/singleproc-" + std::to_string(static_cast<unsigned long>(::getuid())) + "-" + key + ".lock";
+  return directory + "/singleproc-"
+         + std::to_string(static_cast<unsigned long>(::getuid())) + "-" + key
+         + ".lock";
 }
 
-inline std::string socket_path(const std::string& directory, const std::string& key)
+inline std::string
+socket_path(const std::string& directory, const std::string& key)
 {
-    return directory + "/singleproc-" + std::to_string(static_cast<unsigned long>(::getuid())) + "-" + key + ".sock";
+  return directory + "/singleproc-"
+         + std::to_string(static_cast<unsigned long>(::getuid())) + "-" + key
+         + ".sock";
 }
 
-inline void remove_file(const std::string& path)
+inline void
+remove_file(const std::string& path)
 {
-    (void)::unlink(path.c_str());
+  (void)::unlink(path.c_str());
 }
 
-inline void cleanup(const std::string& directory, const std::string& key)
+inline void
+cleanup(const std::string& directory, const std::string& key)
 {
-    remove_file(lock_path(directory, key));
-    remove_file(socket_path(directory, key));
+  remove_file(lock_path(directory, key));
+  remove_file(socket_path(directory, key));
 }
 
-inline void remove_directory(const std::string& directory)
+inline void
+remove_directory(const std::string& directory)
 {
-    (void)::rmdir(directory.c_str());
+  (void)::rmdir(directory.c_str());
 }
 
-inline int finish(const char* name)
+inline int
+finish(const char* name)
 {
-    if (failure_count() != 0)
+  if (failure_count() != 0)
     {
-        (void)std::fprintf(stderr, "%d checks failed\n", failure_count());
-        return 1;
+      (void)std::fprintf(stderr, "%d checks failed\n", failure_count());
+      return 1;
     }
-    (void)std::printf("%s passed\n", name);
-    return 0;
+  (void)std::printf("%s passed\n", name);
+  return 0;
 }
 
 } // namespace test_support
 
-#define CHECK(condition) ::test_support::check((condition), #condition, __FILE__, __LINE__)
+#define CHECK(condition)                                                       \
+  ::test_support::check((condition), #condition, __FILE__, __LINE__)
 
 #endif // SINGLEPROC_TEST_SUPPORT_HPP
 
