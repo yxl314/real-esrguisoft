@@ -14,10 +14,10 @@
 #endif
 #include <cstdio>
 #include <cstring>
-#include <sddl.h>
 #include <string>
 #include <vector>
 #include <windows.h>
+#include <sddl.h>
 
 namespace test_support
 {
