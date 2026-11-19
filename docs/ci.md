@@ -277,7 +277,7 @@ PYTHONPATH=../cxx_audit/src python3 -m cxx_audit -c audit.toml tidy
   数十条 warning。error 来自 `src/model/videoprocessservice.cpp` 的
   `#include "videoprocessservice.moc"`——它是 CMake AUTOMOC 的构建产物，
   仅 configure 不生成，于是找不到该文件。先让 CI 完整构建一次
-  （`ci.py --steps clean,configure,build`，`ci.toml` 已开
+  （`python3 -m cxx_ci.ci_tool --steps clean,configure,build`，`ci.toml` 已开
   `CMAKE_EXPORT_COMPILE_COMMANDS=ON`），再临时给 `audit.toml` 的 `[tidy]` 段加：
 
   ```toml
@@ -374,7 +374,7 @@ python -m cxx_pkg -c cxx_pkg.toml
 
 1. **Windows 侧已实测（2026-11-15）**：Windows + MSYS2 UCRT64（Qt 6.12.0、GCC 16.2、
    CMake 4.5.0、Ninja 1.13.2、FFmpeg 9.0 dev）上 `ci --check-config`/`--dry-run` 与
-   `audit check-config`/`all` 通过；`standardize --check` 因 clang-format 版本差
+   `audit --check-config`/`all` 通过；`style`（`check.py style`）因 clang-format 版本差
    （Windows 23.1.5 vs Linux 21.1.8）报 4 个**未改动基线文件**差异，修复文件本身无差异
    ——见下方第 4 条。Linux 上完整 `clean/configure/build/test` 流水线与全量 ctest 均通过。
 2. **`std_concurrency` 规则未启用**：见 §4 的 4 条既有命中；属于后续代码清理项。
@@ -420,7 +420,7 @@ python -m cxx_pkg -c cxx_pkg.toml
    同步同时移除上游已删除的 `docs/`，旧副本与上游删除前内容逐字节一致，无本地
    改动丢失）；`main.cpp`
    适配 singleproc 新 API（`singleproc::guard` / `guard::status`）。配置侧：
-   `cxx_pkg.ini` 迁移为 TOML `cxx_pkg.toml`（`build.install = false`、
+   打包配置改为 TOML `cxx_pkg.toml`（`build.install = false`、
    `package.files/dirs`、`qt.enabled`），`CMakeLists.txt` 的版本一致性检查改为
    读取 TOML；`check.sh`、`audit.toml`、`.clang-tidy`、`ci.toml` 注释改用
    `cxx_audit` 包与 `--check-config` 形式；`audit.toml` 增加 `[tidy.groups]`

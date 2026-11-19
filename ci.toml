@@ -34,7 +34,7 @@ configure_args = [
 build_args = []
 
 [env]
-# Windows/MSYS2 UCRT64 的 Qt/依赖安装前缀。ci.py 把 [env] 合并进所有阶段的
+# Windows/MSYS2 UCRT64 的 Qt/依赖安装前缀。cxx_ci 的 ci_tool 把 [env] 合并进所有阶段的
 # 子进程环境，所以 PowerShell 里只需一条命令即可跑流水线。
 # Linux 上该路径不存在，CMake 会直接忽略（已实测 configure/build 通过）；
 # 若本机 Qt 装在别处，改这里或删掉此行、在 shell 里自行设置 CMAKE_PREFIX_PATH。
@@ -42,7 +42,7 @@ CMAKE_PREFIX_PATH = "C:/msys64/ucrt64"
 
 [tools]
 # CMake 自动构建只调用 cmake 与 ctest；make 仅在 qmake/自定义构建时才会用。
-# 显式写 mingw32-make：ci.py 在 Windows 上默认 make=nmake，那是 qmake 时代的
+# 显式写 mingw32-make：ci_tool 在 Windows 上默认 make=nmake，那是 qmake 时代的
 # 坑；本工程若切到 qmake 或自定义 make 构建，也必须是 MSYS2 的 make。
 cmake = "cmake"
 make = "mingw32-make"
@@ -50,9 +50,9 @@ ctest = "ctest"
 
 [test]
 # 测试注册在工程根 CMakeLists.txt（RESR_BUILD_TESTS=ON，默认）下，ctest 在
-# build/ci 里运行；--output-on-failure 由 ci.py 自动追加。
+# build/ci 里运行；--output-on-failure 由 ci_tool 自动追加。
 # 排除真实 GPU 引擎用例（LABELS engine，默认也不注册；这里再兜底一层）：
-# 避免 CI/开发机 `ci.py` 直接启动 realesrgan 触发环境 TDR（静态审查 A1）。
+# 避免 CI/开发机跑 `ci` 流水线直接启动 realesrgan 触发环境 TDR（静态审查 A1）。
 framework = "ctest"
 args = ["-LE", "engine"]
 

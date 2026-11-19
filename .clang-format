@@ -3,8 +3,9 @@
 #
 # 由仓库现有源码反推得到，不是从零发明：Tab 缩进（显示宽度 4）、Allman 大括号、
 # 返回值独占一行、指针/引用靠类型名（East const 写法）、80 列换行、二元运算符
-# 换行时前置。cxx_ci/standardize 与 cxx_audit 都读本文件；改动前先全仓跑一遍
-# `standardize.py --check` 看 diff 规模，避免制造无关噪音。
+# 换行时前置。cxx_ci 的 style 检查（clang-format）与 cxx_audit 都读本文件；
+# 改动前先全仓跑一遍 `../cxx_ci/check.py style --root .` 看 diff 规模，避免制造
+# 无关噪音。
 #
 # 本配置按 clang-format 20/21 编写（Linux 开发机为 21.1.8，Windows/MSYS2 用
 # 同一代的 clang-format 即可）；换用更老的版本时 BreakAfterReturnType 需改写为

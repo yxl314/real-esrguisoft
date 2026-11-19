@@ -505,7 +505,7 @@ CRF（Constant Rate Factor）控制视频质量，范围 0-51：
   CamelCase（如 `ImageProcessService`）；参数带 `v_` 前缀，成员参数按项目既有约定；
 - 注释：中文分节注释，说明「为什么」而不是复述代码；
 - 排版由根 `.clang-format` 定义（返回值独占一行、指针/引用靠变量名、80 列换行、
-  二元运算符换行前置、不重排 include / 注释），用 `standardize.py --check/--apply` 检查；
+  二元运算符换行前置、不重排 include / 注释），用 `cxx_ci/check.py style --root .` 检查；
 - 分层依赖只允许向下（View → Controller → Model → Infrastructure → Domain → Common），
   跨层反向依赖需先重构接口。
 

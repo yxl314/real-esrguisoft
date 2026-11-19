@@ -95,15 +95,14 @@ build-win/tests/resr_pipeline_verify.exe --out build-win/verify
 ```powershell
 # 在 UCRT64 PATH 下（cmake/ctest/clang-format 可见）
 cd C:/Users/yxl/Desktop/code/real-esrguisoft
-python ..\cxx_ci\ci\ci.py -c ci.toml --check-config
-python ..\cxx_ci\ci\ci.py -c ci.toml --dry-run
-python ..\cxx_ci\standardize\standardize.py --check      # 应 changed 0
-$env:PYTHONPATH='..\cxx_audit\src'; python -m cpp_audit -c audit.toml check-config
-$env:PYTHONPATH='..\cxx_audit\src'; python -m cpp_audit -c audit.toml all
+python ..\cxx_ci\check.py ci --root .
+python ..\cxx_ci\check.py style --root .                   # 应 changed 0
+$env:PYTHONPATH='..\cxx_audit\src'; python -m cxx_audit -c audit.toml --check-config
+$env:PYTHONPATH='..\cxx_audit\src'; python -m cxx_audit -c audit.toml all
 ```
 
 已知差异：Windows 无 clang-tidy（`audit.toml` 已禁用 tidy/cpd/asan/valgrind）；
-`ci.py` 的 `[tools].make=mingw32-make` 只在 qmake/自定义构建时需要，CMake+Ninja 不依赖。
+`ci.toml` 的 `[tools].make=mingw32-make` 只在 qmake/自定义构建时需要，CMake+Ninja 不依赖。
 
 ## 6. 已知坑（真机验证会遇到）
 

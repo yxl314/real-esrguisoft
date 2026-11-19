@@ -10,5 +10,5 @@ WarningsAsErrors: ''
 # ../../src/... 形式；结尾正则阻止 src/../third_party/... 借前缀混入。
 HeaderFilterRegex: '^(\./|\.\./)*src/([^.]|\.[^./])'
 SystemHeaders: false
-# 修复后的排版交给仓库根的 .clang-format（cxx_ci/standardize 用同一份）。
+# 修复后的排版交给仓库根的 .clang-format（cxx_ci 的 style 检查用同一份）。
 FormatStyle: file
